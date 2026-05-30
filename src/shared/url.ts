@@ -32,6 +32,15 @@ export function isWaypointUrl(url: string): boolean {
   return WAYPOINT_RE.test(url);
 }
 
+// Pages where automatic drive-time routing is allowed: search results and single
+// tour pages. Single source of truth shared by the behavioral gate (routes.ts) and
+// the panel UI (panel.ts) so the toggle and the auto path can never disagree.
+const AUTO_ROUTE_PAGE_TYPES = new Set<PageType>(["searchResults", "tour"]);
+
+export function isAutoRoutePageType(pageType: PageType): boolean {
+  return AUTO_ROUTE_PAGE_TYPES.has(pageType);
+}
+
 function detectPageType(url: URL, documentRef: Document): PageType {
   if (url.pathname.includes("/filter.php")) return url.search ? "searchResults" : "explore";
   if (/\/tour\/post\d+\.html/i.test(url.pathname)) return "tour";

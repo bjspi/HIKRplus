@@ -4,7 +4,7 @@ import { parseCoordinateInput } from "../../shared/coordinates";
 import { t } from "../../shared/i18n";
 import { devLog, devWarn } from "../../shared/dev-log";
 import { routeStartCell } from "../../shared/route-cache";
-import { normalizeHikrUrl } from "../../shared/url";
+import { normalizeHikrUrl, isAutoRoutePageType } from "../../shared/url";
 import { getBrowserLocation } from "../dom";
 import { writeDriveSortData } from "../sort-data";
 import { EVT_TOUR_READY, beginWork, endWork, isIdle, onPipelineChange, type TourReadyDetail } from "../pipeline-status";
@@ -111,12 +111,13 @@ function setupRouteStartSuggestions(): void {
 }
 
 function setupAutoRoutes(context: Parameters<HikrFeature["run"]>[0]): void {
-  // Automatic drive-time routing runs ONLY on search-results pages — never on home,
-  // custom lists, tour lists, or waypoint (/dir/) pages. The auto toggle is only
-  // rendered there (see panel.ts); this guard is the behavioral source of truth so
-  // the auto path can never fire elsewhere even if the toggle reappears. The manual
-  // "Fahrtzeiten" button stays available everywhere via calculateVisibleRoutes().
-  if (context.page.pageType !== "searchResults") return;
+  // Automatic drive-time routing runs ONLY on search-results pages and single tour
+  // pages — never on home, custom lists, tour lists, or waypoint (/dir/) pages. The
+  // auto toggle is only rendered there (see panel.ts); this guard is the behavioral
+  // source of truth so the auto path can never fire elsewhere even if the toggle
+  // reappears. The manual "Fahrtzeiten" button stays available everywhere via
+  // calculateVisibleRoutes().
+  if (!isAutoRoutePageType(context.page.pageType)) return;
   const toggle = routeAutoToggle();
   if (!toggle || toggle.dataset.hikrAutoReady) return;
   toggle.dataset.hikrAutoReady = "true";
