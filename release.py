@@ -2,10 +2,13 @@
 # Dependencies: pip install rich-click questionary
 """HikrPlus release push tool.
 
-Reads the extension version from public/manifest.json, guards against
-double-releases via a _used marker in package.json, then pushes the
-current branch, optionally creates a git tag and GitHub release, and
-finally commits the burn marker so the same version cannot be pushed again.
+Reads the extension version from public/manifest.json (the single source of
+truth), keeps package.json's version in sync, and guards against double-
+releases via a dedicated .released marker file. Pushing the git tag triggers
+the GitHub Actions workflow that builds the official release with ZIPs.
+
+Both manifest.json and package.json always keep a clean semver; the "already
+released" state lives only in .released, so no version field is ever corrupted.
 """
 
 import json
@@ -22,8 +25,9 @@ from rich.text import Text
 
 console = Console()
 
-MANIFEST_PATH = Path("public/manifest.json")
-PACKAGE_PATH  = Path("package.json")
+MANIFEST_PATH   = Path("public/manifest.json")
+PACKAGE_PATH    = Path("package.json")
+RELEASED_MARKER = Path(".released")
 
 LOGO = r"""
   _   _ _ _        ____  _
@@ -67,11 +71,11 @@ def confirm(question: str, default: bool = True) -> bool:
 
 
 def show_release_info(version: str, tag: str) -> None:
-    """Display a summary panel with version, tag, and burn-marker info."""
+    """Display a summary panel with version and tag."""
     console.print(Panel(
         f"  [dim]Version:[/dim]    [bold green]{version}[/bold green]\n"
         f"  [dim]Tag:[/dim]        [bold cyan]{tag}[/bold cyan]\n"
-        f"  [dim]Nach Push:[/dim]  package.json → [yellow]{version}_used[/yellow]",
+        f"  [dim]Nach Push:[/dim]  [yellow].released → {version}[/yellow] (Version gesperrt)",
         title="[cyan]HikrPlus Release[/cyan]",
         border_style="cyan",
     ))
@@ -83,10 +87,11 @@ def show_summary(tag: str, version: str, created_tag: bool) -> None:
     if created_tag:
         lines.append(f"  [dim]Tag:[/dim]           [cyan]{tag}[/cyan]")
         lines.append(f"  [dim]GitHub Release:[/dim] [green]wird von GitHub Actions gebaut[/green]")
-    lines.append(f"  [dim]package.json:[/dim]   [yellow]{version}_used[/yellow]")
+    lines.append(f"  [dim]Version:[/dim]       [green]{version}[/green]  [dim](manifest + package.json)[/dim]")
+    lines.append(f"  [dim].released:[/dim]      [yellow]{version}[/yellow]")
     if created_tag:
         lines.append(f"\n  [dim]Release-Seite: github.com/bjspi/HIKRplus/releases[/dim]")
-    lines.append(f"  [dim]Nächster Push erfordert neue Version in public/manifest.json[/dim]")
+    lines.append(f"  [dim]Nächster Release erfordert neue Version in public/manifest.json[/dim]")
     console.print(Panel("\n".join(lines), title="[green]  Done[/green]", border_style="green"))
 
 
@@ -128,13 +133,23 @@ def read_extension_version() -> str:
     return version
 
 
+def read_released_version() -> str:
+    """Return the last released version recorded in .released, or '' if none."""
+    if not RELEASED_MARKER.exists():
+        return ""
+    return RELEASED_MARKER.read_text(encoding="utf-8").strip()
+
+
 def ensure_not_released(version: str) -> None:
-    """Abort if package.json carries a _used marker, meaning this version was already pushed."""
-    pkg_version = read_json(PACKAGE_PATH).get("version", "")
-    if "_used" in pkg_version:
+    """Abort if .released already records this exact version.
+
+    Bumping the version in public/manifest.json clears the block automatically,
+    since the marker then no longer matches.
+    """
+    if read_released_version() == version:
         abort(
             "Bereits released",
-            f"[bold yellow]Version [white]{version}[/white] wurde bereits gepushed.\n\n"
+            f"[bold yellow]Version [white]{version}[/white] wurde bereits released.\n\n"
             "[white]Bitte neue Version in [cyan]public/manifest.json[/cyan] vergeben.[/white]",
         )
 
@@ -188,20 +203,38 @@ def do_tag(tag: str) -> None:
     console.print("[dim]  → GitHub Actions baut jetzt das offizielle Release (Chrome + Firefox ZIP).[/dim]")
 
 
-def do_burn(version: str) -> None:
-    """Write *version*_used into package.json and push the burn-marker commit.
+def sync_package_version(version: str) -> bool:
+    """Set package.json's version to match the manifest. Returns True if it changed.
 
-    manifest.json is intentionally left untouched so Chrome can still load the extension.
+    Keeps the npm version a clean semver, in sync with the extension version,
+    without touching git (the caller bundles it into the burn commit).
     """
     pkg = read_json(PACKAGE_PATH)
-    pkg["version"] = f"{version}_used"
+    if pkg.get("version") == version:
+        return False
+    pkg["version"] = version
     write_json(PACKAGE_PATH, pkg)
-    console.print(f"[yellow]  package.json → [bold]{version}_used[/bold][/yellow]")
-    with console.status("[cyan]Burn-Commit...[/cyan]"):
-        git("add", str(PACKAGE_PATH))
+    console.print(f"[green]  package.json → [bold]{version}[/bold] (synchronisiert)[/green]")
+    return True
+
+
+def finalize_release(version: str) -> None:
+    """Record *version* in .released and push the marker commit.
+
+    This is the burn step: it blocks re-releasing the same version. Both
+    manifest.json and package.json keep their clean semver — only .released
+    carries the released-state. package.json is synced into the same commit.
+    """
+    RELEASED_MARKER.write_text(f"{version}\n", encoding="utf-8")
+    package_changed = sync_package_version(version)
+    console.print(f"[yellow]  .released → [bold]{version}[/bold][/yellow]")
+    with console.status("[cyan]Release-Marker committen...[/cyan]"):
+        git("add", str(RELEASED_MARKER))
+        if package_changed:
+            git("add", str(PACKAGE_PATH))
         git("commit", "-m", f"chore: mark v{version} as released [skip ci]")
         git("push")
-    console.print("[green]  Burn-Commit gepushed[/green]")
+    console.print("[green]  Release-Marker gepushed[/green]")
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -209,7 +242,7 @@ def do_burn(version: str) -> None:
 @click.command()
 @click.option("--no-tag", is_flag=True, default=False, help="Git-Tag überspringen (kein Release-Build)")
 def main(no_tag: bool) -> None:
-    """HikrPlus release push — Version aus manifest.json, Burn-Marker in package.json.
+    """HikrPlus release push — Version aus manifest.json, Sperre via .released.
 
     Das offizielle GitHub Release (mit Chrome- und Firefox-ZIP) wird vom
     Workflow .github/workflows/release.yml gebaut, sobald der Tag gepusht wird.
@@ -232,7 +265,7 @@ def main(no_tag: bool) -> None:
     do_push()
     if create_tag:
         do_tag(tag)
-    do_burn(version)
+    finalize_release(version)
 
     show_summary(tag, version, create_tag)
 
