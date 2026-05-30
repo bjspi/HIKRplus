@@ -57,6 +57,12 @@ Open [hikr.org](https://www.hikr.org) — the panel will appear on any page with
 ### 📋 Inline Tour Details
 Stop clicking into every tour to find the basics. The extension fetches duration, elevation gain/loss, route length, highest point, and waypoints — and shows them **directly in the listing** without leaving the page. Loads up to 4 tours in parallel, caches results permanently so repeat visits are instant.
 
+<div align="center">
+<img src="screenshots/inline-tour-details.jpg" alt="Inline tour details with stats, expandable waypoint list, driving time, and a Google Maps route link" width="720" />
+</div>
+
+Each tour card shows duration, elevation gain/loss, route length, highest point, route type, and driving distance/time — plus an **expandable waypoint list** and a one-click **Google Maps route link** for the exact route.
+
 > Auto-loads on home, region, search, and waypoint pages — fully configurable per page type.
 
 ---
@@ -66,8 +72,21 @@ One click opens a **Leaflet map** with markers for every visible tour's starting
 
 ---
 
+### 🧭 External Map Links
+Every waypoint gets a small **↗ button** to open its exact coordinates in an external map service with all kinds of layers — nakarte.me, ppete (hybrid map), Google Maps, OpenStreetMap, Mapy.cz, swisstopo, BergFex, OpenTopoMap, or your own custom URL template. Pick your preferred service in the options.
+
+<div align="center">
+<img src="screenshots/waypoint-external-map-links.jpg" alt="Each waypoint has an arrow button to open it in an external map service such as nakarte.me" width="720" />
+</div>
+
+---
+
 ### 🚗 Driving Time Estimates
-Enter your starting location and the extension calculates **driving distance and duration** to every tour's start point — shown inline on each tour card as `🚗 12.5 km · 2 h 15 min`.
+Enter your starting location and the extension calculates **driving distance and duration** to every tour's start point — shown inline on each tour card as `🚗 12.5 km · 2 h 15 min`. Distances are based on **real calculated routes**, using the coordinates of the tour's first waypoint as the destination. On tour detail pages, driving distance and duration are added straight into the info table.
+
+<div align="center">
+<img src="screenshots/driving-time-on-tour-page.jpg" alt="Driving distance and duration added to a tour's detail table, computed from a real route to the first waypoint" width="720" />
+</div>
 
 Supports two routing backends:
 | Provider | Notes |
@@ -80,7 +99,11 @@ Routes are cached for 7 days. Unroutable locations are negative-cached to avoid 
 ---
 
 ### 🔍 Hover Previews
-Hover over any tour link, waypoint link, or user profile and a **floating preview modal** appears — complete with gallery, minimap, and external map links. Configurable delay (0 – 1500 ms).
+Hover over any tour link, waypoint link, or user profile and a **floating preview modal** appears — complete with gallery, minimap, and external map links. Configurable delay (0 – 1500 ms). Close it with **Esc** or by clicking outside.
+
+<div align="center">
+<img src="screenshots/hover-tour-preview.jpg" alt="Floating preview overlay shown when hovering over a tour link, with region, difficulty grades, and waypoints" width="720" />
+</div>
 
 ---
 
@@ -90,15 +113,23 @@ HIKR paginates aggressively. This extension **auto-fetches extra result pages** 
 ---
 
 ### 🔎 Radius Search Enhancements
-The coordinate field in HIKR's radius search is extended with **address autocomplete**: type any place name and get live suggestions powered by Photon/OpenStreetMap. Clicking a suggestion automatically fills in the correct coordinates.
+The coordinate field in HIKR's radius search is extended with **address autocomplete**: type any place name into the coordinate field and get live suggestions powered by Photon/OpenStreetMap. Clicking a suggestion automatically fills in the correct coordinates.
+
+<div align="center">
+<img src="screenshots/radius-search-address-autocomplete.jpg" alt="Typing a place name into the radius-search coordinate field shows live address suggestions" width="640" />
+</div>
 
 **Search settings are saved automatically** — all field inputs (location, radius, filters) are remembered between sessions, so your last search state is always restored.
 
 ---
 
 ### 💾 Search Presets & Saved Locations
-- **Search Presets** — save the entire explore form state under a name, restore with one click.
+- **Search Presets** — save the entire explore form state under a name, restore with one click. Perfect for recurring searches (e.g. *"everything from the last 7 days for snow research"*).
 - **Saved Locations** — store frequently-used center coordinates (home valley, parking spots) and apply them to the search form instantly via a dropdown.
+
+<div align="center">
+<img src="screenshots/search-presets.jpg" alt="Search preset dropdown with save and delete buttons on the explore form" width="640" />
+</div>
 
 ---
 
@@ -125,7 +156,11 @@ Export all visible tours to an **.xls file** with one button click — straight 
 ---
 
 ### ❄️ Snow Conditions Research
-Available on search result pages, the "❄ Schneelagen" button scans every visible tour's photo gallery for annotated peaks and collects their elevations — giving you a real-time picture of where snow was recently documented.
+Available on search result pages, the "❄ Schneelagen" button scans every visible tour's photo gallery for annotated peaks and collects their elevations — giving you a real-time picture of where snow was recently documented. Combine it with a radius search around a location over the last X days to pull every annotated summit photo from all matching tour reports into one place.
+
+<div align="center">
+<img src="screenshots/snow-conditions-research.jpg" alt="Snow conditions research panel listing annotated peaks sorted high to low, each with photo thumbnails and a JSON export button" width="720" />
+</div>
 
 **How it works:**
 1. Each visible tour's gallery is scanned for all photos
@@ -184,7 +219,7 @@ Open the options page via the panel button or the extension icon. Configure:
 - **Feature toggles** — enable or disable any feature individually
 - **Route provider** — OpenRouteService or Google Routes, with API keys
 - **Map provider** — OpenStreetMap or Mapy.cz
-- **External map links** — open waypoints in Google Maps, OSM, Swisstopo, Bergfex, OpenTopoMap, or a custom URL template
+- **External map links** — open waypoints in nakarte.me, ppete, Google Maps, OpenStreetMap, Mapy.cz, swisstopo, BergFex, OpenTopoMap, or a custom URL template
 - **Autoload per page type** — choose on which page types tour details load automatically
 - **Extra pages to load** — tune pagination depth
 - **Hover preview delay** — or disable previews entirely
