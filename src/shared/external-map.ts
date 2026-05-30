@@ -6,6 +6,7 @@ export interface ExternalMapInfo {
 }
 
 const LABELS: Record<ExternalMapProvider, string> = {
+  nakarte: "nakarte.me",
   gmaps: "Google Maps",
   osm: "OpenStreetMap",
   mapy: "Mapy.cz",
@@ -31,6 +32,8 @@ function applyTemplate(template: string, lat: number, lng: number, zoom: number)
 
 function buildHref(provider: ExternalMapProvider, lat: number, lng: number, zoom: number, customTemplate?: string): string {
   switch (provider) {
+    case "nakarte":
+      return `https://nakarte.me/#m=${zoom}/${lat}/${lng}&l=L/Sa`;
     case "osm":
       return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=${zoom}/${lat}/${lng}`;
     case "mapy":
@@ -51,7 +54,7 @@ function buildHref(provider: ExternalMapProvider, lat: number, lng: number, zoom
 }
 
 export function externalMapUrl(coords: Coordinates, settings: ExtensionSettings): ExternalMapInfo {
-  const provider = settings.ui.externalMapProvider ?? "gmaps";
+  const provider = settings.ui.externalMapProvider ?? "nakarte";
   const zoom = clampZoom(settings.ui.externalMapZoom ?? 15);
   const href = buildHref(provider, coords.lat, coords.lng, zoom, settings.ui.externalMapCustomTemplate);
   return { href, label: LABELS[provider] ?? "Karte" };

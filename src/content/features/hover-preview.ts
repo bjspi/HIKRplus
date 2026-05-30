@@ -17,7 +17,7 @@ export const hoverPreviewFeature: HikrFeature = {
     overlay.innerHTML = `
       <div class="hikr-ext-preview-frame">
         <button class="hikr-ext-preview-close" type="button" aria-label="Schließen">✕</button>
-        <iframe sandbox="allow-same-origin allow-scripts"></iframe>
+        <iframe></iframe>
       </div>
     `;
     document.body.appendChild(overlay);
