@@ -33,7 +33,7 @@ function applyTemplate(template: string, lat: number, lng: number, zoom: number)
 function buildHref(provider: ExternalMapProvider, lat: number, lng: number, zoom: number, customTemplate?: string): string {
   switch (provider) {
     case "nakarte":
-      return `https://nakarte.me/#m=${zoom}/${lat}/${lng}&l=L/Sa`;
+      return `https://nakarte.me/#m=${zoom}/${lat}/${lng}&l=Sa`;
     case "osm":
       return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=${zoom}/${lat}/${lng}`;
     case "mapy":
