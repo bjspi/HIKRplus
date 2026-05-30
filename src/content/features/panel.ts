@@ -19,7 +19,13 @@ export const panelFeature: HikrFeature = {
       ? ""
       : `<button class="hikr-ext-btn" data-hikr-action="enrich">${t("panel_btn_details")}</button>`;
     const savedRouteStart = localStorage.getItem("hikr.ext.route.start") ?? "";
+    // The "auto travel-time" toggle only makes sense on search results, so it is shown
+    // there only. Everywhere else the manual "Fahrtzeiten" button must stay visible
+    // regardless of the persisted auto setting (otherwise the page would have no
+    // routing control at all).
+    const showAutoRoutes = page.pageType === "searchResults";
     const autoRoutes = localStorage.getItem("hikr.ext.route.auto") === "true";
+    const autoRoutesActive = autoRoutes && showAutoRoutes;
     const panel = document.createElement("section");
     panel.className = "hikr-ext-panel";
     panel.innerHTML = `
@@ -37,14 +43,16 @@ export const panelFeature: HikrFeature = {
           </div>
           <small>${t("route_start_hint")}</small>
         </div>
-        <label class="hikr-ext-panel-toggle">
+        ${showAutoRoutes
+          ? `<label class="hikr-ext-panel-toggle">
           <input id="hikr-ext-route-auto" type="checkbox" ${autoRoutes ? "checked" : ""} />
           <span>${t("route_auto_label")}</span>
           <span class="hikr-ext-route-auto-spinner" id="hikr-ext-route-auto-spinner" aria-hidden="true" hidden></span>
-        </label>
+        </label>`
+          : ""}
         <div class="hikr-ext-button-row">
           ${detailsButton}
-          <button class="hikr-ext-btn" data-hikr-action="routes"${autoRoutes ? " hidden" : ""}>${t("panel_btn_routes")}</button>
+          <button class="hikr-ext-btn" data-hikr-action="routes"${autoRoutesActive ? " hidden" : ""}>${t("panel_btn_routes")}</button>
           <button class="hikr-ext-btn" data-hikr-action="map">${t("panel_btn_map")}</button>
           <button class="hikr-ext-btn" data-hikr-action="excel">${t("panel_btn_excel")}</button>
           ${page.pageType === "searchResults"
