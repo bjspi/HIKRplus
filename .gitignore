@@ -1,0 +1,35 @@
+# Abhängigkeiten
+node_modules/
+
+# Build-Ausgaben – werden via GitHub Actions als Release-ZIPs bereitgestellt
+dist/
+dist-firefox/
+*.zip
+
+# Backup-Marker (von mark-nobackup.mjs generiert)
+.nobackup
+
+# Chrome-Debug-Launcher (lokal, nicht für das Repo)
+start-chrome-debug.bat
+start-chrome-debug-isolated.bat
+*-debug.bat
+*-debug-isolated.bat
+
+# Dokumentation & Pläne (privat)
+docs/
+
+# Python (release.py)
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+release.py

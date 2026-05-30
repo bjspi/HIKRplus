@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="HIKR Enhancements">
+  <defs>
+    <linearGradient id="ridge" x1="74" y1="360" x2="438" y2="130" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12312b"/>
+      <stop offset="1" stop-color="#1f6b5a"/>
+    </linearGradient>
+    <linearGradient id="trail" x1="160" y1="392" x2="352" y2="168" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5c542"/>
+      <stop offset="1" stop-color="#33d7c5"/>
+    </linearGradient>
+  </defs>
+  <path d="M74 374 182 198l56 78 92-146 108 244H74Z" fill="url(#ridge)"/>
+  <path d="M182 198 238 276l-33-12-42 22 19-88Zm148-68 108 244-98-92-64 20 54-172Z" fill="#eef8f4" opacity=".88"/>
+  <path d="M152 390c34-34 86-30 104-72 18-43-14-78 27-112 20-17 46-22 76-20" fill="none" stroke="url(#trail)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="152" cy="390" r="24" fill="#f5c542"/>
+  <circle cx="359" cy="186" r="24" fill="#33d7c5"/>
+  <path d="M347 170h28v28" fill="none" stroke="#12312b" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m374 170-37 37" fill="none" stroke="#12312b" stroke-width="14" stroke-linecap="round"/>
+</svg>

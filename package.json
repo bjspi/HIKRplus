@@ -1,0 +1,29 @@
+{
+  "name": "hikr-extension",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && powershell -ExecutionPolicy Bypass -File scripts/generate-logo.ps1 && vite build && node scripts/build-content.mjs && node scripts/mark-nobackup.mjs",
+    "build:firefox": "npm run build && node scripts/build-firefox.mjs",
+    "build:ci": "tsc --noEmit && vite build && node scripts/build-content.mjs",
+    "build:firefox:ci": "npm run build:ci && node scripts/build-firefox.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.303",
+    "@types/leaflet": "^1.9.16",
+    "@types/node": "^22.10.5",
+    "esbuild": "^0.25.10",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}
