@@ -1,0 +1,73 @@
+{
+  "manifest_version": 3,
+  "name": "HIKR Enhancements",
+  "description": "Flexible UX-, Cache-, Karten- und Export-Erweiterungen fuer hikr.org.",
+  "version": "0.2.0_used",
+  "icons": {
+    "16": "icons/hikr-icon-16.png",
+    "32": "icons/hikr-icon-32.png",
+    "48": "icons/hikr-icon-48.png",
+    "128": "icons/hikr-icon-128.png"
+  },
+  "action": {
+    "default_title": "HIKR Enhancements",
+    "default_icon": {
+      "16": "icons/hikr-icon-16.png",
+      "32": "icons/hikr-icon-32.png",
+      "48": "icons/hikr-icon-48.png",
+      "128": "icons/hikr-icon-128.png"
+    }
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.hikr.org/*"
+      ],
+      "js": [
+        "early-content.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.hikr.org/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/hikr-logo.png",
+        "icons/hikr-logo-wide.png",
+        "inject/minimap-bridge.js",
+        "inject/gallery-bridge.js"
+      ],
+      "matches": [
+        "https://www.hikr.org/*"
+      ]
+    }
+  ],
+  "permissions": [
+    "storage",
+    "downloads",
+    "geolocation",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.hikr.org/*",
+    "https://api.openrouteservice.org/*",
+    "https://routes.googleapis.com/*",
+    "https://photon.komoot.io/*",
+    "https://api.mapy.com/*",
+    "https://*.tile.openstreetmap.org/*"
+  ]
+}
