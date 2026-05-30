@@ -32,7 +32,7 @@ export const panelFeature: HikrFeature = {
           <label for="hikr-ext-route-start-input">${t("route_start_label")}</label>
           <div class="hikr-ext-suggest-wrap">
             <input id="hikr-ext-route-start-input" type="text" autocomplete="off" placeholder="${esc(t("route_start_placeholder"))}" value="${esc(savedRouteStart)}" />
-            <button class="hikr-ext-input-clear" id="hikr-ext-route-start-clear" type="button" title="Eingabe löschen" ${savedRouteStart ? "" : "hidden"}>✕</button>
+            <button class="hikr-ext-input-clear" id="hikr-ext-route-start-clear" type="button" title="${esc(t("route_start_clear"))}" aria-label="${esc(t("route_start_clear"))}" ${savedRouteStart ? "" : "hidden"}>✕</button>
             <ul class="hikr-ext-suggest-list" id="hikr-ext-route-start-suggestions" hidden></ul>
           </div>
           <small>${t("route_start_hint")}</small>

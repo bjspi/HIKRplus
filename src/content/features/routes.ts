@@ -98,6 +98,7 @@ function setupRouteStartSuggestions(): void {
     input.value = btn.dataset.name ?? "";
     localStorage.setItem("hikr.ext.route.start", input.value);
     hideSuggestions();
+    syncClearBtn();
     input.focus();
   });
 

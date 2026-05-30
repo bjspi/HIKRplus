@@ -85,6 +85,12 @@ function mergeSettings(value?: Partial<ExtensionSettings>): ExtensionSettings {
   if (merged.provider.mapProvider === "mapy" && !merged.provider.apiKeys.mapy) {
     merged.provider.mapProvider = "osm";
   }
+  // One-time migration: move existing installs off the old "gmaps" default onto nakarte.
+  // Only triggers for stored settings that still carry the previous default; runs once.
+  if (value && !merged.migration.externalMapDefaultMigratedAt && value.ui?.externalMapProvider === "gmaps") {
+    merged.ui.externalMapProvider = "nakarte";
+    merged.migration.externalMapDefaultMigratedAt = Date.now();
+  }
   return merged;
 }
 

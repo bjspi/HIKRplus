@@ -50,9 +50,9 @@ export interface FeatureSettings {
 
 export type TourDetailsAutoload = Record<TourListPageType, boolean>;
 
-export type AppLocale = "de" | "en" | "it";
+export type AppLocale = "de" | "en" | "it" | "fr";
 
-export type ExternalMapProvider = "gmaps" | "osm" | "mapy" | "swisstopo" | "bergfex" | "openTopoMap" | "nakarte" | "custom";
+export type ExternalMapProvider = "gmaps" | "osm" | "mapy" | "swisstopo" | "bergfex" | "openTopoMap" | "nakarte" | "ppete" | "custom";
 
 export interface ExtensionSettings {
   language: AppLocale;
@@ -93,6 +93,7 @@ export interface ExtensionSettings {
   searchPresets: SearchPreset[];
   migration: {
     userscriptMigratedAt?: number;
+    externalMapDefaultMigratedAt?: number;
   };
 }
 

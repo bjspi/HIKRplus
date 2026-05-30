@@ -232,7 +232,7 @@ src/
 
 ## 🌍 Languages
 
-The UI is fully translated in **German**, **English**, and **Italian**. The extension auto-detects your browser language and falls back to English.
+The UI is fully translated in **German**, **English**, **Italian**, and **French**. The extension auto-detects your browser language and falls back to English.
 
 ---
 
