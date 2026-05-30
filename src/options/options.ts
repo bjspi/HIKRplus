@@ -259,6 +259,7 @@ function renderAllPanels(settings: ExtensionSettings, activeSection: NavSection)
         <label for="externalMapProvider">${esc(t("label_external_map_provider"))}</label>
         <select id="externalMapProvider">
           <option value="nakarte" ${settings.ui.externalMapProvider === "nakarte" ? "selected" : ""}>nakarte.me</option>
+          <option value="ppete" ${settings.ui.externalMapProvider === "ppete" ? "selected" : ""}>ppete (Hybrid map)</option>
           <option value="gmaps" ${settings.ui.externalMapProvider === "gmaps" ? "selected" : ""}>Google Maps</option>
           <option value="osm" ${settings.ui.externalMapProvider === "osm" ? "selected" : ""}>OpenStreetMap</option>
           <option value="openTopoMap" ${settings.ui.externalMapProvider === "openTopoMap" ? "selected" : ""}>OpenTopoMap</option>

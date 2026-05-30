@@ -7,6 +7,7 @@ export interface ExternalMapInfo {
 
 const LABELS: Record<ExternalMapProvider, string> = {
   nakarte: "nakarte.me",
+  ppete: "ppete (Hybrid map)",
   gmaps: "Google Maps",
   osm: "OpenStreetMap",
   mapy: "Mapy.cz",
@@ -34,6 +35,8 @@ function buildHref(provider: ExternalMapProvider, lat: number, lng: number, zoom
   switch (provider) {
     case "nakarte":
       return `https://nakarte.me/#m=${zoom}/${lat}/${lng}&l=P/Sa`;
+    case "ppete":
+      return `https://www.ppete.de/pik/#${zoom}/${lat}/${lng}/31-11`;
     case "osm":
       return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=${zoom}/${lat}/${lng}`;
     case "mapy":
