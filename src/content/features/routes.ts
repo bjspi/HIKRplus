@@ -37,6 +37,38 @@ function routeButtons(): HTMLButtonElement[] {
   return [...document.querySelectorAll<HTMLButtonElement>('button[data-hikr-action="routes"]')];
 }
 
+// Counts the per-tour route pills in the result list. Every routable tour (waypoint
+// coordinates known) gets exactly one ".hikr-ext-route-result" — a pending one while
+// its drive-time is computed, then a resolved/unavailable one. Non-routable tours
+// (no waypoint) never get a pill, so they correctly stay out of the total. The fiche
+// table and list-cell variants use different classes and are not counted here.
+function countRoutePills(): { loaded: number; total: number } {
+  const pills = document.querySelectorAll(".hikr-ext-route-result");
+  let loaded = 0;
+  for (const pill of pills) {
+    if (!pill.classList.contains("hikr-ext-route-pending")) loaded++;
+  }
+  return { loaded, total: pills.length };
+}
+
+// Drives the spinner + "(loaded/total)" counter shown next to the auto-routes toggle.
+// Both are visible only while auto-routing is on and the pipeline still has work in
+// flight (pagination prefetch, enrichment or routing). The total climbs as enrichment
+// turns prefetched tours into routable ones; loaded climbs as drive-times resolve and
+// always catches up to total when the pipeline goes idle.
+function syncRouteAutoStatus(): void {
+  const toggle = routeAutoToggle();
+  const active = Boolean(toggle?.checked) && !isIdle();
+  const spinner = document.getElementById("hikr-ext-route-auto-spinner");
+  if (spinner) (spinner as HTMLElement).hidden = !active;
+  const counter = document.getElementById("hikr-ext-route-auto-count");
+  if (counter) {
+    const { loaded, total } = countRoutePills();
+    counter.textContent = `(${loaded}/${total})`;
+    (counter as HTMLElement).hidden = !active || total === 0;
+  }
+}
+
 function esc(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch] ?? ch));
 }
@@ -126,20 +158,17 @@ function setupAutoRoutes(context: Parameters<HikrFeature["run"]>[0]): void {
     if (button) button.hidden = toggle.checked;
   };
   syncRoutesButton();
-  // Spinner next to the label shows while auto-routing still has work in flight —
-  // including ongoing pagination prefetch (the pipeline counter covers it).
-  const syncSpinner = () => {
-    const spinner = document.getElementById("hikr-ext-route-auto-spinner");
-    if (spinner) (spinner as HTMLElement).hidden = !toggle.checked || isIdle();
-  };
-  onPipelineChange(syncSpinner);
-  syncSpinner();
+  // Spinner + "(loaded/total)" counter next to the label show while auto-routing
+  // still has work in flight — including ongoing pagination prefetch (the pipeline
+  // counter covers it). See syncRouteAutoStatus for the counting model.
+  onPipelineChange(syncRouteAutoStatus);
+  syncRouteAutoStatus();
   toggle.addEventListener("change", () => {
     localStorage.setItem("hikr.ext.route.auto", toggle.checked ? "true" : "false");
     syncRoutesButton();
     invalidateRouteContext();
     if (toggle.checked) startAutoRouting(context);
-    syncSpinner();
+    syncRouteAutoStatus();
   });
   if (toggle.checked) startAutoRouting(context);
 }
@@ -411,6 +440,7 @@ async function routeOneDetail(detail: HTMLElement, target: Coordinates, ctx: Rou
   if (hasMatchingRouteResult(detail, ctx.provider, ctx.startCell)) return;
   removeStaleRouteResult(detail, ctx.provider, ctx.startCell); // drop a pill from a previous start
   insertRoutePlaceholder(detail); // spinner shown while we wait for the result
+  syncRouteAutoStatus(); // a new routable tour just appeared → bump the (loaded/total) counter now
   const route = await fetchRouteForTarget(target, ctx);
   if (hasMatchingRouteResult(detail, ctx.provider, ctx.startCell)) return; // another pass won the race
   if (!route) {

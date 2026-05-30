@@ -272,6 +272,14 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   animation: hikr-ext-spin .7s linear infinite;
 }
 .hikr-ext-route-auto-spinner[hidden] { display: none !important; }
+.hikr-ext-route-auto-count {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hikr-ink-soft, var(--hikr-ink));
+  opacity: 0.75;
+}
+.hikr-ext-route-auto-count[hidden] { display: none !important; }
 .hikr-ext-panel-toggle input {
   appearance: none;
   width: 30px;

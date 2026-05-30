@@ -48,6 +48,7 @@ export const panelFeature: HikrFeature = {
           ? `<label class="hikr-ext-panel-toggle">
           <input id="hikr-ext-route-auto" type="checkbox" ${autoRoutes ? "checked" : ""} />
           <span>${t("route_auto_label")}</span>
+          <span class="hikr-ext-route-auto-count" id="hikr-ext-route-auto-count" aria-hidden="true" hidden></span>
           <span class="hikr-ext-route-auto-spinner" id="hikr-ext-route-auto-spinner" aria-hidden="true" hidden></span>
         </label>`
           : ""}
