@@ -1,4 +1,5 @@
 import { t } from "../../shared/i18n";
+import { isAutoRoutePageType } from "../../shared/url";
 import type { HikrFeature } from "../feature-types";
 
 function esc(value: string): string {
@@ -19,11 +20,11 @@ export const panelFeature: HikrFeature = {
       ? ""
       : `<button class="hikr-ext-btn" data-hikr-action="enrich">${t("panel_btn_details")}</button>`;
     const savedRouteStart = localStorage.getItem("hikr.ext.route.start") ?? "";
-    // The "auto travel-time" toggle only makes sense on search results, so it is shown
-    // there only. Everywhere else the manual "Fahrtzeiten" button must stay visible
-    // regardless of the persisted auto setting (otherwise the page would have no
-    // routing control at all).
-    const showAutoRoutes = page.pageType === "searchResults";
+    // The "auto travel-time" toggle only makes sense on search results and single tour
+    // pages, so it is shown there only. Everywhere else the manual "Fahrtzeiten" button
+    // must stay visible regardless of the persisted auto setting (otherwise the page
+    // would have no routing control at all).
+    const showAutoRoutes = isAutoRoutePageType(page.pageType);
     const autoRoutes = localStorage.getItem("hikr.ext.route.auto") === "true";
     const autoRoutesActive = autoRoutes && showAutoRoutes;
     const panel = document.createElement("section");
