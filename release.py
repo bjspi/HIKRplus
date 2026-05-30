@@ -81,6 +81,16 @@ def show_release_info(version: str, tag: str) -> None:
     ))
 
 
+def show_push_summary() -> None:
+    """Print the success panel for a plain push (no tag, no release)."""
+    console.print(Panel(
+        "[bold green]Branch gepushed (ohne Release).[/bold green]\n\n"
+        "  [dim]Kein Tag, kein Release-Build, .released unverändert.[/dim]",
+        title="[green]  Done[/green]",
+        border_style="green",
+    ))
+
+
 def show_summary(tag: str, version: str, created_tag: bool) -> None:
     """Print the final success panel listing everything that was done."""
     lines = [f"[bold green]Release {tag} abgeschlossen![/bold green]\n"]
@@ -174,7 +184,7 @@ def ask_create_tag(no_tag: bool) -> bool:
     and publishes the official GitHub Release. Returns False if --no-tag is set.
     """
     if no_tag:
-        console.print("[dim]--no-tag: Tag wird übersprungen (kein Release-Build).[/dim]")
+        console.print("[dim]--no-tag: nur pushen, kein Tag/Release.[/dim]")
         return False
     return confirm("Git-Tag erstellen und pushen? (löst den Release-Build via GitHub Actions aus)")
 
@@ -240,34 +250,41 @@ def finalize_release(version: str) -> None:
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 @click.command()
-@click.option("--no-tag", is_flag=True, default=False, help="Git-Tag überspringen (kein Release-Build)")
+@click.option("--no-tag", is_flag=True, default=False, help="Nur pushen, kein Tag/Release (z. B. für README-Änderungen)")
 def main(no_tag: bool) -> None:
     """HikrPlus release push — Version aus manifest.json, Sperre via .released.
 
-    Das offizielle GitHub Release (mit Chrome- und Firefox-ZIP) wird vom
-    Workflow .github/workflows/release.yml gebaut, sobald der Tag gepusht wird.
+    Zwei Modi:
+      • Release: Tag wird gepusht → GitHub Actions baut Chrome- + Firefox-ZIP,
+        danach wird die Version via .released gesperrt.
+      • Nur Push (--no-tag oder Tag-Frage verneinen): pusht den Branch ohne Tag,
+        Release-Build oder .released-Änderung — ideal für README/Docs.
     """
     show_header()
 
-    version = read_extension_version()
-    ensure_not_released(version)
     ensure_clean_worktree()
 
+    version = read_extension_version()
     tag = f"v{version}"
-    show_release_info(version, tag)
-
-    if not confirm(f"Version {tag} jetzt pushen?"):
-        sys.exit(0)
 
     create_tag = ask_create_tag(no_tag)
 
-    console.print()
-    do_push()
     if create_tag:
+        ensure_not_released(version)
+        show_release_info(version, tag)
+        if not confirm(f"Release {tag} jetzt pushen?"):
+            sys.exit(0)
+        console.print()
+        do_push()
         do_tag(tag)
-    finalize_release(version)
-
-    show_summary(tag, version, create_tag)
+        finalize_release(version)
+        show_summary(tag, version, True)
+    else:
+        if not confirm("Aktuellen Branch jetzt pushen (ohne Release)?"):
+            sys.exit(0)
+        console.print()
+        do_push()
+        show_push_summary()
 
 
 if __name__ == "__main__":
