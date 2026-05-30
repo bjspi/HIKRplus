@@ -1,6 +1,6 @@
 {
   "name": "hikr-extension",
-  "version": "0.2.1_used",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "scripts": {
