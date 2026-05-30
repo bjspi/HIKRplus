@@ -40,12 +40,16 @@ export const panelFeature: HikrFeature = {
         <label class="hikr-ext-panel-toggle">
           <input id="hikr-ext-route-auto" type="checkbox" ${autoRoutes ? "checked" : ""} />
           <span>${t("route_auto_label")}</span>
+          <span class="hikr-ext-route-auto-spinner" id="hikr-ext-route-auto-spinner" aria-hidden="true" hidden></span>
         </label>
         <div class="hikr-ext-button-row">
           ${detailsButton}
-          <button class="hikr-ext-btn" data-hikr-action="routes">${t("panel_btn_routes")}</button>
+          <button class="hikr-ext-btn" data-hikr-action="routes"${autoRoutes ? " hidden" : ""}>${t("panel_btn_routes")}</button>
           <button class="hikr-ext-btn" data-hikr-action="map">${t("panel_btn_map")}</button>
           <button class="hikr-ext-btn" data-hikr-action="excel">${t("panel_btn_excel")}</button>
+          ${page.pageType === "searchResults"
+            ? `<button class="hikr-ext-btn" data-hikr-action="sort">↕ Sortieren</button>`
+            : ""}
           ${page.pageType === "searchResults" && settings.features.snowResearch
             ? `<button class="hikr-ext-btn" data-hikr-action="snow">❄ Schneelagen</button>`
             : ""}

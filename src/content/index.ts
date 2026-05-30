@@ -92,6 +92,9 @@ async function boot(): Promise<void> {
       context.log(`${feature.title}: Fehler`);
     }
   }
+  if (page.pageType === "searchResults" && page.tourUrls.length > 0 && settings.sort.auto) {
+    void import("./features/sort-results").then(({ runAutoSort }) => runAutoSort(context));
+  }
   document.addEventListener("click", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLElement>("[data-hikr-action]");
     if (!button) return;
@@ -103,6 +106,9 @@ async function boot(): Promise<void> {
     }
     if (action === "options") {
       chrome.runtime.sendMessage({ type: "OPEN_OPTIONS_PAGE" }).catch(() => undefined);
+    }
+    if (action === "sort") {
+      void import("./features/sort-results").then(({ openSortMenu }) => openSortMenu(context));
     }
   });
   chrome.runtime.onMessage.addListener((message: { type?: string; action?: string }) => {

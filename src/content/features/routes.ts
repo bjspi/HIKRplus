@@ -1,13 +1,15 @@
 import { sendMessage } from "../../shared/messages";
-import type { Coordinates, RouteCacheRecord } from "../../shared/types";
+import type { Coordinates, RouteCacheRecord, RouteProviderId } from "../../shared/types";
 import { parseCoordinateInput } from "../../shared/coordinates";
 import { t } from "../../shared/i18n";
 import { devLog, devWarn } from "../../shared/dev-log";
 import { routeStartCell } from "../../shared/route-cache";
 import { normalizeHikrUrl } from "../../shared/url";
 import { getBrowserLocation } from "../dom";
+import { writeDriveSortData } from "../sort-data";
+import { EVT_TOUR_READY, beginWork, endWork, isIdle, onPipelineChange, type TourReadyDetail } from "../pipeline-status";
 import type { HikrFeature } from "../feature-types";
-import { enrichVisibleTours } from "./tour-details";
+import { ensureEnrichmentPipeline } from "./tour-details";
 import { loadWaypoint } from "./waypoint-gmaps-links";
 
 async function getStart(settingsStart: Coordinates | undefined, preferBrowser: boolean): Promise<Coordinates | undefined> {
@@ -112,11 +114,27 @@ function setupAutoRoutes(context: Parameters<HikrFeature["run"]>[0]): void {
   const toggle = routeAutoToggle();
   if (!toggle || toggle.dataset.hikrAutoReady) return;
   toggle.dataset.hikrAutoReady = "true";
+  const syncRoutesButton = () => {
+    const button = document.querySelector<HTMLElement>('.hikr-ext-panel [data-hikr-action="routes"]');
+    if (button) button.hidden = toggle.checked;
+  };
+  syncRoutesButton();
+  // Spinner next to the label shows while auto-routing still has work in flight —
+  // including ongoing pagination prefetch (the pipeline counter covers it).
+  const syncSpinner = () => {
+    const spinner = document.getElementById("hikr-ext-route-auto-spinner");
+    if (spinner) (spinner as HTMLElement).hidden = !toggle.checked || isIdle();
+  };
+  onPipelineChange(syncSpinner);
+  syncSpinner();
   toggle.addEventListener("change", () => {
     localStorage.setItem("hikr.ext.route.auto", toggle.checked ? "true" : "false");
-    if (toggle.checked) void calculateVisibleRoutes(context);
+    syncRoutesButton();
+    invalidateRouteContext();
+    if (toggle.checked) startAutoRouting(context);
+    syncSpinner();
   });
-  if (toggle.checked) window.setTimeout(() => void calculateVisibleRoutes(context), 500);
+  if (toggle.checked) startAutoRouting(context);
 }
 
 async function getCustomStart(context: Parameters<HikrFeature["run"]>[0]): Promise<Coordinates | undefined> {
@@ -192,14 +210,42 @@ function setRouteButtonLoading(loading: boolean): void {
   }
 }
 
+function placeRouteElement(detail: HTMLElement, element: HTMLElement): void {
+  const waypointList = detail.querySelector<HTMLElement>(".hikr-ext-waypoint-list");
+  if (waypointList) waypointList.insertAdjacentElement("beforebegin", element);
+  else detail.append(element);
+}
+
+// A loading pill shown the instant a tour is taken into account for routing (auto
+// on, or the manual button), so the user sees every considered tour — including
+// tours added later by the pagination loader.
+function insertRoutePlaceholder(detail: HTMLElement): void {
+  if (detail.querySelector(".hikr-ext-route-result")) return; // real or pending pill already there
+  const el = document.createElement("div");
+  el.className = "hikr-ext-route-result hikr-ext-route-pending";
+  el.title = "Fahrtzeit wird berechnet…";
+  el.innerHTML = `<span class="hikr-ext-route-pill"><span class="hikr-ext-route-spinner" aria-hidden="true"></span> <span class="hikr-ext-route-time">Fahrtzeit…</span></span>`;
+  placeRouteElement(detail, el);
+}
+
+function markRouteUnavailable(detail: HTMLElement): void {
+  const pending = detail.querySelector<HTMLElement>(".hikr-ext-route-pending");
+  if (!pending) return;
+  pending.classList.remove("hikr-ext-route-pending");
+  pending.classList.add("hikr-ext-route-unavailable");
+  pending.title = "Keine Route gefunden";
+  pending.innerHTML = `<span class="hikr-ext-route-pill"><span class="hikr-ext-route-icon" aria-hidden="true">🚗</span>–</span>`;
+}
+
 function insertRouteResult(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, start?: Coordinates, target?: Coordinates): void {
   const wrapper = document.createElement("div");
   wrapper.innerHTML = routeResultHtml(route, provider, startCell, start, target);
   const routeElement = wrapper.firstElementChild;
   if (!(routeElement instanceof HTMLElement)) return;
-  const waypointList = detail.querySelector<HTMLElement>(".hikr-ext-waypoint-list");
-  if (waypointList) waypointList.insertAdjacentElement("beforebegin", routeElement);
-  else detail.append(routeElement);
+  // Replace any pending/stale pill with the freshly computed one.
+  detail.querySelector(".hikr-ext-route-result")?.remove();
+  placeRouteElement(detail, routeElement);
+  writeDriveSortData(detail.closest<HTMLElement>(".content-list"), route);
 }
 
 function insertRouteIntoFicheTable(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, start?: Coordinates, target?: Coordinates): void {
@@ -236,8 +282,7 @@ function insertRouteIntoListCell(detail: HTMLElement, route: RouteCacheRecord, p
   firstLink.insertAdjacentElement("afterend", div);
 }
 
-const ROUTE_CONCURRENCY = 4;
-let activeRouteCalculation: Promise<RouteCacheRecord[]> | undefined;
+let activeRouteCalculation: Promise<void> | undefined;
 
 async function insertFicheTableRouteForTourPage(
   context: Parameters<HikrFeature["run"]>[0],
@@ -289,150 +334,150 @@ async function insertFicheTableRouteForTourPage(
   }
 }
 
-async function calculateVisibleRoutesInternal(context: Parameters<HikrFeature["run"]>[0]): Promise<RouteCacheRecord[]> {
-  const customStart = await getCustomStart(context);
-  const start = customStart ?? await getStart(context.settings.location.fallbackStart, context.settings.location.preferBrowserLocation);
-  const apiKey = context.settings.provider.apiKeys[context.settings.provider.routeProvider];
-  devLog("route", "calculateVisibleRoutes start", {
-    provider: context.settings.provider.routeProvider,
-    hasCustomStart: Boolean(customStart),
-    hasStart: Boolean(start),
-    hasApiKey: Boolean(apiKey),
-    tourUrls: context.page.tourUrls.length
-  });
-  if (!start || !apiKey) {
-    context.log(!start ? "Kein Startpunkt verfügbar" : "Kein API-Key für Route Provider");
-    devWarn("route", "calculateVisibleRoutes aborted", {
-      reason: !start ? "missing start" : "missing api key",
-      provider: context.settings.provider.routeProvider
-    });
-    return [];
-  }
-  const routeStart = start;
-  const routeApiKey = apiKey;
-  await enrichVisibleTours(context.page.tourUrls, false, { waypointGmapsLinks: context.settings.ui.waypointGmapsLinks });
-  const routes: RouteCacheRecord[] = [];
-  const details = [...document.querySelectorAll<HTMLElement>(".hikr-ext-tour-details[data-lat][data-lng]")];
-  const routeByTarget = new Map<string, RouteCacheRecord>();
-  const detailsByTarget = new Map<string, { detail: HTMLElement; target: Coordinates }[]>();
-  const startCell = routeStartCell({ start });
-  let skippedExisting = 0;
-  let removedStale = 0;
-  let invalidTargets = 0;
-
-  for (const detail of details) {
-    if (hasMatchingRouteResult(detail, context.settings.provider.routeProvider, startCell)) {
-      skippedExisting++;
-      continue;
-    }
-    if (removeStaleRouteResult(detail, context.settings.provider.routeProvider, startCell)) {
-      removedStale++;
-    }
-    const target = { lat: Number(detail.dataset.lat), lng: Number(detail.dataset.lng) };
-    if (!Number.isFinite(target.lat) || !Number.isFinite(target.lng)) {
-      invalidTargets++;
-      continue;
-    }
-    const key = routeTargetKey(target);
-    detailsByTarget.set(key, [...(detailsByTarget.get(key) ?? []), { detail, target }]);
-  }
-
-  const routeJobs = [...detailsByTarget.entries()];
-  devLog("route", "route jobs prepared", {
-    detailCount: details.length,
-    uniqueTargets: routeJobs.length,
-    skippedExisting,
-    removedStale,
-    invalidTargets,
-    start: routeStart,
-    startCell,
-    concurrency: ROUTE_CONCURRENCY
-  });
-  let nextJob = 0;
-  let failedRoutes = 0;
-  async function worker(): Promise<void> {
-    while (nextJob < routeJobs.length) {
-      const [targetKey, entries] = routeJobs[nextJob++]!;
-      const target = entries[0]?.target;
-      if (!target) continue;
-      const pendingEntries = entries.filter(({ detail }) => !hasMatchingRouteResult(detail, context.settings.provider.routeProvider, startCell));
-      if (pendingEntries.length === 0) {
-        skippedExisting += entries.length;
-        devLog("route", "skip route job already rendered", { targetKey, entries: entries.length, startCell });
-        continue;
-      }
-      try {
-        devLog("route", "request route", { targetKey, target, entries: pendingEntries.length, start: routeStart, startCell });
-        const response = await sendMessage({
-          type: "GET_ROUTE",
-          request: {
-            provider: context.settings.provider.routeProvider,
-            apiKey: routeApiKey,
-            mode: "driving-car",
-            start: routeStart,
-            target
-          }
-        });
-        if (routeFailureResponse(response)) {
-          failedRoutes++;
-          devLog("route", "negative route cache", {
-            targetKey,
-            target,
-            start: routeStart,
-            error: response.routeFailure.error,
-            expiresAt: response.routeFailure.expiresAt
-          });
-          continue;
-        }
-        if (!validRouteResponse(response)) {
-          failedRoutes++;
-          devWarn("route", "missing route response", { targetKey, target, start: routeStart, response });
-          console.warn("HIKR route response missing route", { targetKey, target, start: routeStart, response });
-          continue;
-        }
-        devLog("route", "route ok", {
-          targetKey,
-          distance: response.route.distanceText,
-          duration: response.route.durationText,
-          expiresAt: response.route.expiresAt
-        });
-        routeByTarget.set(targetKey, response.route);
-        routes.push(response.route);
-        for (const { detail } of pendingEntries) {
-          if (!hasMatchingRouteResult(detail, context.settings.provider.routeProvider, startCell)) {
-            insertRouteResult(detail, response.route, context.settings.provider.routeProvider, startCell, routeStart, target);
-            insertRouteIntoFicheTable(detail, response.route, context.settings.provider.routeProvider, startCell, routeStart, target);
-            insertRouteIntoListCell(detail, response.route, context.settings.provider.routeProvider, startCell, routeStart, target);
-          }
-        }
-      } catch (error) {
-        failedRoutes++;
-        devWarn("route", "route calculation threw", { targetKey, target, start: routeStart, error });
-        console.warn("HIKR route calculation failed", targetKey, error);
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(ROUTE_CONCURRENCY, routeJobs.length) }, () => worker()));
-
-  // Tour page: calculate route to the first fiche waypoint directly
-  await insertFicheTableRouteForTourPage(context, routeStart, routeApiKey, startCell, routes);
-
-  devLog("route", "calculateVisibleRoutes done", {
-    renderedRoutes: routes.length,
-    failedRoutes,
-    uniqueTargets: routeJobs.length
-  });
-  context.log(`Fahrtzeiten: ${routes.length}`);
-  return routes;
+interface RouteCtx {
+  start: Coordinates;
+  apiKey: string;
+  provider: RouteProviderId;
+  startCell: string;
 }
 
-export async function calculateVisibleRoutes(context: Parameters<HikrFeature["run"]>[0]): Promise<RouteCacheRecord[]> {
+// Resolved once per activation (geocoding the start can be expensive) and cached —
+// including the negative result, so a missing key does not re-geocode per tour.
+let routeContextPromise: Promise<RouteCtx | null> | undefined;
+// Coalesces concurrent route requests by start+target: many tours share one start
+// waypoint, so the second tour reuses the first's promise and just renders into its
+// own detail element.
+const routePromises = new Map<string, Promise<RouteCacheRecord | undefined>>();
+
+function invalidateRouteContext(): void {
+  routeContextPromise = undefined;
+  routePromises.clear();
+}
+
+function resolveRouteContext(context: Parameters<HikrFeature["run"]>[0]): Promise<RouteCtx | null> {
+  if (!routeContextPromise) {
+    routeContextPromise = (async () => {
+      const customStart = await getCustomStart(context);
+      const start = customStart ?? await getStart(context.settings.location.fallbackStart, context.settings.location.preferBrowserLocation);
+      const apiKey = context.settings.provider.apiKeys[context.settings.provider.routeProvider];
+      if (!start || !apiKey) {
+        devWarn("route", "no route context", { hasStart: Boolean(start), hasApiKey: Boolean(apiKey) });
+        return null;
+      }
+      return { start, apiKey, provider: context.settings.provider.routeProvider, startCell: routeStartCell({ start }) };
+    })();
+  }
+  return routeContextPromise;
+}
+
+function fetchRouteForTarget(target: Coordinates, ctx: RouteCtx): Promise<RouteCacheRecord | undefined> {
+  const key = `${ctx.startCell}|${routeTargetKey(target)}`;
+  const existing = routePromises.get(key);
+  if (existing) return existing;
+  const promise = (async () => {
+    try {
+      const response = await sendMessage({
+        type: "GET_ROUTE",
+        request: { provider: ctx.provider, apiKey: ctx.apiKey, mode: "driving-car", start: ctx.start, target }
+      });
+      if (routeFailureResponse(response) || !validRouteResponse(response)) return undefined;
+      return response.route;
+    } catch (error) {
+      devWarn("route", "GET_ROUTE threw", { target, error });
+      return undefined;
+    }
+  })();
+  // Cache only successful results: a failed/empty result must not poison every other
+  // tour that shares this target, and should be retryable. The service worker still
+  // negative-caches genuine failures, so re-requests stay cheap.
+  promise.then((route) => {
+    if (!route) routePromises.delete(key);
+  }).catch(() => routePromises.delete(key));
+  routePromises.set(key, promise);
+  return promise;
+}
+
+// Compute (or reuse) the route for one tour detail and render it. Shared by the
+// per-tour auto path and the manual batch; both guard with hasMatchingRouteResult,
+// so they never double-insert.
+async function routeOneDetail(detail: HTMLElement, target: Coordinates, ctx: RouteCtx): Promise<void> {
+  if (hasMatchingRouteResult(detail, ctx.provider, ctx.startCell)) return;
+  removeStaleRouteResult(detail, ctx.provider, ctx.startCell); // drop a pill from a previous start
+  insertRoutePlaceholder(detail); // spinner shown while we wait for the result
+  const route = await fetchRouteForTarget(target, ctx);
+  if (hasMatchingRouteResult(detail, ctx.provider, ctx.startCell)) return; // another pass won the race
+  if (!route) {
+    markRouteUnavailable(detail);
+    return;
+  }
+  insertRouteResult(detail, route, ctx.provider, ctx.startCell, ctx.start, target);
+  insertRouteIntoFicheTable(detail, route, ctx.provider, ctx.startCell, ctx.start, target);
+  insertRouteIntoListCell(detail, route, ctx.provider, ctx.startCell, ctx.start, target);
+}
+
+let autoRoutingListenerAdded = false;
+
+// Drives one tour's route, owning the pipeline "route" counter. beginWork runs
+// synchronously (before any await) so the enrich→route handoff has no gap where the
+// pipeline could falsely look idle.
+function routeReadyDetail(detail: HTMLElement, target: Coordinates, context: Parameters<HikrFeature["run"]>[0]): void {
+  beginWork("route");
+  void (async () => {
+    const ctx = await resolveRouteContext(context);
+    if (ctx) await routeOneDetail(detail, target, ctx);
+  })()
+    .catch((error) => devWarn("route", "auto route failed", error))
+    .finally(() => endWork("route"));
+}
+
+// Routes every currently-ready tour (and the single-tour-page fiche table). Safe to
+// call repeatedly: already-routed tours are skipped, shared targets coalesce.
+function routeReadyNow(context: Parameters<HikrFeature["run"]>[0]): void {
+  for (const detail of document.querySelectorAll<HTMLElement>(".hikr-ext-tour-details[data-lat][data-lng]")) {
+    const target = { lat: Number(detail.dataset.lat), lng: Number(detail.dataset.lng) };
+    if (Number.isFinite(target.lat) && Number.isFinite(target.lng)) routeReadyDetail(detail, target, context);
+  }
+  // Single tour pages have no list card: route to the first fiche waypoint directly.
+  void (async () => {
+    const ctx = await resolveRouteContext(context);
+    if (ctx) await insertFicheTableRouteForTourPage(context, ctx.start, ctx.apiKey, ctx.startCell, []);
+  })();
+}
+
+// Starts/keeps event-driven auto-routing: every tour computes its driving time the
+// moment its waypoint coordinates are known, independent of pagination progress.
+// The tour-ready listener is attached once; the catch-up pass runs on every call so
+// re-activation (or a changed start) re-routes the visible tours.
+export function startAutoRouting(context: Parameters<HikrFeature["run"]>[0]): void {
+  ensureEnrichmentPipeline(context); // ensure tours get fetched so tour-ready fires
+  if (!autoRoutingListenerAdded) {
+    autoRoutingListenerAdded = true;
+    document.addEventListener(EVT_TOUR_READY, (event) => {
+      const ready = (event as CustomEvent<TourReadyDetail>).detail;
+      if (ready?.detail && ready.target) routeReadyDetail(ready.detail, ready.target, context);
+    });
+  }
+  routeReadyNow(context);
+}
+
+// Manual "Fahrtzeiten" button: re-resolve the start (the input may have changed),
+// then activate routing — which both routes the visible tours now AND keeps up with
+// tours added later by the pagination loader.
+export async function calculateVisibleRoutes(context: Parameters<HikrFeature["run"]>[0]): Promise<void> {
   if (activeRouteCalculation) {
     devLog("route", "calculateVisibleRoutes already running");
     return activeRouteCalculation;
   }
   setRouteButtonLoading(true);
-  activeRouteCalculation = calculateVisibleRoutesInternal(context).finally(() => {
+  invalidateRouteContext();
+  activeRouteCalculation = (async () => {
+    const ctx = await resolveRouteContext(context);
+    if (!ctx) {
+      context.log("Kein Startpunkt oder API-Key verfügbar");
+      return;
+    }
+    startAutoRouting(context);
+  })().finally(() => {
     activeRouteCalculation = undefined;
     setRouteButtonLoading(false);
   });

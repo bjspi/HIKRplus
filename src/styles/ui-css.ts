@@ -448,4 +448,51 @@ button, input, select { font: inherit; }
   .options-sidebar { flex-direction: row; flex-wrap: wrap; padding: 10px; border-right: none; border-bottom: 1px solid var(--line); }
   .options-main { padding: 16px; }
 }
+.hikr-ext-sort-menu--options {
+  margin-top: 14px;
+  max-width: 460px;
+}
+.hikr-ext-sort-head {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.hikr-ext-sort-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.hikr-ext-sort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+.hikr-ext-sort-item:hover {
+  background: var(--accent-mist);
+  border-color: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.hikr-ext-sort-item.hikr-ext-sort-active {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-pale);
+}
+.hikr-ext-sort-arrow {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--accent-strong);
+}
 `;
