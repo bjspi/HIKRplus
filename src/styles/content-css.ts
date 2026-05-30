@@ -212,11 +212,36 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   min-height: 30px;
   border: 1px solid var(--hikr-line-strong);
   border-radius: 6px;
-  padding: 5px 8px;
+  padding: 5px 28px 5px 8px;
   background: var(--hikr-surface);
   color: var(--hikr-ink);
   font-size: 12px;
 }
+.hikr-ext-input-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--hikr-ink-soft);
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hikr-ext-input-clear:hover {
+  background: var(--hikr-line-strong);
+  color: var(--hikr-ink);
+}
+.hikr-ext-input-clear[hidden] { display: none !important; }
 .hikr-ext-route-start input:focus {
   outline: none;
   border-color: var(--hikr-accent-soft);

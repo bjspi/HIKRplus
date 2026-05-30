@@ -258,6 +258,7 @@ function renderAllPanels(settings: ExtensionSettings, activeSection: NavSection)
       <div class="field">
         <label for="externalMapProvider">${esc(t("label_external_map_provider"))}</label>
         <select id="externalMapProvider">
+          <option value="nakarte" ${settings.ui.externalMapProvider === "nakarte" ? "selected" : ""}>nakarte.me</option>
           <option value="gmaps" ${settings.ui.externalMapProvider === "gmaps" ? "selected" : ""}>Google Maps</option>
           <option value="osm" ${settings.ui.externalMapProvider === "osm" ? "selected" : ""}>OpenStreetMap</option>
           <option value="openTopoMap" ${settings.ui.externalMapProvider === "openTopoMap" ? "selected" : ""}>OpenTopoMap</option>

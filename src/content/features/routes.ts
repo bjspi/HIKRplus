@@ -23,6 +23,10 @@ function routeStartSuggestions(): HTMLElement | undefined {
   return document.querySelector<HTMLElement>("#hikr-ext-route-start-suggestions") ?? undefined;
 }
 
+function routeStartClearBtn(): HTMLButtonElement | undefined {
+  return document.querySelector<HTMLButtonElement>("#hikr-ext-route-start-clear") ?? undefined;
+}
+
 function routeAutoToggle(): HTMLInputElement | undefined {
   return document.querySelector<HTMLInputElement>("#hikr-ext-route-auto") ?? undefined;
 }
@@ -41,17 +45,32 @@ let suggestSeq = 0;
 function setupRouteStartSuggestions(): void {
   const input = routeStartInput();
   const list = routeStartSuggestions();
+  const clearBtn = routeStartClearBtn();
   if (!input || !list || input.dataset.hikrSuggestReady) return;
   input.dataset.hikrSuggestReady = "true";
 
   const safeList = list;
+  const safeInput = input;
   function hideSuggestions() {
     safeList.hidden = true;
     safeList.innerHTML = "";
   }
 
+  function syncClearBtn() {
+    if (clearBtn) clearBtn.hidden = !safeInput.value;
+  }
+
+  clearBtn?.addEventListener("click", () => {
+    input.value = "";
+    localStorage.removeItem("hikr.ext.route.start");
+    hideSuggestions();
+    syncClearBtn();
+    input.focus();
+  });
+
   input.addEventListener("input", () => {
     localStorage.setItem("hikr.ext.route.start", input.value.trim());
+    syncClearBtn();
     window.clearTimeout(suggestTimer);
     const query = input.value.trim();
     if (parseCoordinateInput(query) || query.length < 3) { hideSuggestions(); return; }

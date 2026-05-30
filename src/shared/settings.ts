@@ -49,7 +49,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
     alwaysOpenMiniMaps: true,
     waypointGmapsLinks: true,
     wideLayout: true,
-    externalMapProvider: "gmaps",
+    externalMapProvider: "nakarte",
     externalMapZoom: 15,
     hoverPreviewDelay: 750,
     snowHighestPeakOnly: true

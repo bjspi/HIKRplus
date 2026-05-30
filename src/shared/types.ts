@@ -52,7 +52,7 @@ export type TourDetailsAutoload = Record<TourListPageType, boolean>;
 
 export type AppLocale = "de" | "en" | "it";
 
-export type ExternalMapProvider = "gmaps" | "osm" | "mapy" | "swisstopo" | "bergfex" | "openTopoMap" | "custom";
+export type ExternalMapProvider = "gmaps" | "osm" | "mapy" | "swisstopo" | "bergfex" | "openTopoMap" | "nakarte" | "custom";
 
 export interface ExtensionSettings {
   language: AppLocale;

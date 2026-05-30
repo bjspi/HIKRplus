@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "HIKR Enhancements",
   "description": "Flexible UX-, Cache-, Karten- und Export-Erweiterungen fuer hikr.org.",
-  "version": "0.2.0_used",
+  "version": "0.2.1",
   "icons": {
     "16": "icons/hikr-icon-16.png",
     "32": "icons/hikr-icon-32.png",
