@@ -63,7 +63,13 @@ Stop clicking into every tour to find the basics. The extension fetches duration
 
 Each tour card shows duration, elevation gain/loss, route length, highest point, route type, and driving distance/time — plus an **expandable waypoint list** and a one-click **Google Maps route link** for the exact route.
 
-> Auto-loads on home, region, search, and waypoint pages — fully configurable per page type.
+The same inline stats are also added to your personal **watchlists** ("Merklisten") on hikr.org:
+
+<div align="center">
+<img src="screenshots/inline-details-watchlist.jpg" alt="Inline tour stats added to entries in a personal watchlist" width="720" />
+</div>
+
+> Auto-loads on home, region, tour-list, search, and waypoint pages — fully configurable per page type.
 
 ---
 
