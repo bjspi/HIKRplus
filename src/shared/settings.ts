@@ -1,4 +1,5 @@
 import type { ExtensionSettings } from "./types";
+import { DEFAULT_SORT } from "./sort";
 import { detectLocaleFromBrowser } from "./i18n";
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
@@ -57,6 +58,11 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   dev: {
     consoleLogging: false
   },
+  sort: {
+    auto: false,
+    key: DEFAULT_SORT.key,
+    dir: DEFAULT_SORT.dir
+  },
   migration: {}
 };
 
@@ -77,6 +83,7 @@ function mergeSettings(value?: Partial<ExtensionSettings>): ExtensionSettings {
     location: { ...DEFAULT_SETTINGS.location, ...value?.location },
     ui: { ...DEFAULT_SETTINGS.ui, ...value?.ui },
     dev: { ...DEFAULT_SETTINGS.dev, ...value?.dev },
+    sort: { ...DEFAULT_SETTINGS.sort, ...value?.sort },
   tourDetailsAutoload: { ...DEFAULT_SETTINGS.tourDetailsAutoload, ...value?.tourDetailsAutoload },
   savedLocations: value?.savedLocations ? [...value.savedLocations] : [...DEFAULT_SETTINGS.savedLocations],
   searchPresets: value?.searchPresets ? [...value.searchPresets] : [...DEFAULT_SETTINGS.searchPresets],
@@ -119,6 +126,7 @@ export async function patchSettings(patch: Partial<ExtensionSettings>): Promise<
     location: { ...current.location, ...patch.location },
     ui: { ...current.ui, ...patch.ui },
     dev: { ...current.dev, ...patch.dev },
+    sort: { ...current.sort, ...patch.sort },
     tourDetailsAutoload: { ...current.tourDetailsAutoload, ...patch.tourDetailsAutoload },
     savedLocations: patch.savedLocations ?? current.savedLocations,
     searchPresets: patch.searchPresets ?? current.searchPresets,

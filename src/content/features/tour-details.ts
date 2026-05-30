@@ -5,7 +5,9 @@ import { t } from "../../shared/i18n";
 import { parseHtml, parseTourDocument, parseWaypointDocument } from "../../shared/parser";
 import type { TourCacheRecord, WaypointCacheRecord } from "../../shared/types";
 import { detailHtml, ensureTourPlaceholder, findTourContainer } from "../dom";
-import type { HikrFeature } from "../feature-types";
+import { writeTourSortData } from "../sort-data";
+import { EVT_TOUR_READY, EVT_TOURS_APPENDED, beginWork, endWork, type TourReadyDetail } from "../pipeline-status";
+import type { FeatureContext, HikrFeature } from "../feature-types";
 
 function tourLooksParseable(tour: TourCacheRecord, html: string): boolean {
   if (tour.title) return true;
@@ -126,6 +128,7 @@ function renderTourInto(tour: TourCacheRecord, waypoint: WaypointCacheRecord | u
     return;
   }
   const details = ensureTourPlaceholder(parent, tour.url);
+  if (parent.classList.contains("content-list")) writeTourSortData(parent, tour);
   const inline = details.classList.contains("hikr-ext-tour-inline");
   details.innerHTML = detailHtml(tour, !inline && waypointGmapsLinks ? waypoint : undefined, currentSettings, inline);
   details.classList.remove("hikr-ext-tour-pending");
@@ -134,6 +137,10 @@ function renderTourInto(tour: TourCacheRecord, waypoint: WaypointCacheRecord | u
   if (!inline && waypoint?.coordinates) {
     details.dataset.lat = String(waypoint.coordinates.lat);
     details.dataset.lng = String(waypoint.coordinates.lng);
+    // Waypoint coordinates are now known → let the routing feature compute this
+    // tour's driving time immediately, without waiting for the rest of the page.
+    const readyDetail: TourReadyDetail = { detail: details, tourUrl: tour.url, target: waypoint.coordinates };
+    document.dispatchEvent(new CustomEvent(EVT_TOUR_READY, { detail: readyDetail }));
   }
   devLog("render", "tour", tour.id, { withWaypoint: Boolean(waypoint), missing: tour.missingFields });
 }
@@ -154,6 +161,7 @@ function pumpEnrichment(): void {
     enrichmentActive++;
     void enrichOne(url, enrichmentOptions.force, enrichmentOptions.waypointGmapsLinks).finally(() => {
       enrichmentActive--;
+      endWork("enrich");
       pumpEnrichment();
     });
   }
@@ -168,6 +176,7 @@ export function enqueueTours(urls: string[], options?: { force?: boolean; waypoi
     if (enrichmentSeen.has(norm)) continue;
     enrichmentSeen.add(norm);
     enrichmentQueue.push(url);
+    beginWork("enrich");
     added++;
   }
   if (added > 0) devLog("enrich", "enqueued", { added, queueLength: enrichmentQueue.length });
@@ -223,27 +232,39 @@ function autoloadAllowed(pageType: string, settings: { tourDetailsAutoload: Reco
   return key ? Boolean(settings.tourDetailsAutoload[key]) : false;
 }
 
+let pipelineStarted = false;
+
+// Idempotent: starts background enrichment for the initial tours and keeps enriching
+// pages added later by the pagination loader. Callable from several features (auto
+// details, auto routes, auto sort) — the first call wins, the rest are no-ops.
+export function ensureEnrichmentPipeline(context: FeatureContext): void {
+  currentSettings = context.settings;
+  if (pipelineStarted) return;
+  pipelineStarted = true;
+  const { settings } = context;
+  reserveTourPlaceholders(context.page.tourUrls);
+  enqueueTours(context.page.tourUrls, { force: false, waypointGmapsLinks: settings.ui.waypointGmapsLinks });
+  document.addEventListener(EVT_TOURS_APPENDED, (event) => {
+    const detail = (event as CustomEvent<{ tourUrls: string[] }>).detail;
+    if (!detail?.tourUrls?.length) return;
+    reserveTourPlaceholders(detail.tourUrls);
+    enqueueTours(detail.tourUrls, { force: false, waypointGmapsLinks: settings.ui.waypointGmapsLinks });
+  });
+}
+
 export const tourDetailsFeature: HikrFeature = {
   id: "tourDetailsEnrichment",
   title: "Tour Details Enrichment",
   defaultEnabled: true,
   matchesPage: (context) => context.tourUrls.length > 0,
-  run({ page, settings, log }) {
+  run(context) {
+    const { page, settings, log } = context;
     currentSettings = settings;
-    if (document.body.dataset.hikrExtToursEnriched) return;
     if (!autoloadAllowed(page.pageType, settings)) {
       log(t("autoload_off_for", { page: page.pageType }));
       return;
     }
-    document.body.dataset.hikrExtToursEnriched = "true";
-    reserveTourPlaceholders(page.tourUrls);
-    enqueueTours(page.tourUrls, { force: false, waypointGmapsLinks: settings.ui.waypointGmapsLinks });
+    ensureEnrichmentPipeline(context);
     log(t("tourdetails_loaded", { loaded: 0, total: page.tourUrls.length }));
-    document.addEventListener("hikr:ext:tours-appended", (event) => {
-      const detail = (event as CustomEvent<{ tourUrls: string[] }>).detail;
-      if (!detail?.tourUrls?.length) return;
-      reserveTourPlaceholders(detail.tourUrls);
-      enqueueTours(detail.tourUrls, { force: false, waypointGmapsLinks: settings.ui.waypointGmapsLinks });
-    });
   }
 };

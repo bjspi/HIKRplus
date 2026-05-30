@@ -88,6 +88,11 @@ export interface ExtensionSettings {
   dev: {
     consoleLogging: boolean;
   };
+  sort: {
+    auto: boolean;
+    key: string;
+    dir: import("./sort").SortDir;
+  };
   tourDetailsAutoload: TourDetailsAutoload;
   savedLocations: SavedLocation[];
   searchPresets: SearchPreset[];

@@ -1,5 +1,6 @@
 import { sendMessage } from "../shared/messages";
 import { DEFAULT_SETTINGS } from "../shared/settings";
+import { type SortDir, buildSortGridHtml } from "../shared/sort";
 import { LOCALES, detectLocaleFromBrowser, setLocale, t, type Locale } from "../shared/i18n";
 import type {
   ExtensionSettings,
@@ -33,11 +34,11 @@ const FEATURE_KEYS_TOURDETAILS: (keyof FeatureSettings)[] = [
 
 const AUTOLOAD_KEYS: TourListPageType[] = ["home", "region", "tourList", "searchResults", "waypoint"];
 
-type NavSection = "features" | "provider" | "saved_locations" | "tourdetails" | "autoload" | "cache_location" | "search" | "diagnose";
+type NavSection = "features" | "provider" | "saved_locations" | "tourdetails" | "autoload" | "cache_location" | "search" | "sort" | "diagnose";
 
 const NAV_SECTIONS: NavSection[] = [
   "features", "provider", "saved_locations", "tourdetails",
-  "autoload", "cache_location", "search", "diagnose"
+  "autoload", "cache_location", "search", "sort", "diagnose"
 ];
 
 interface CacheStatsData {
@@ -56,6 +57,7 @@ function navLabel(section: NavSection): string {
     autoload: t("section_autoload"),
     cache_location: t("section_cache_location"),
     search: t("section_search"),
+    sort: "Sortierung",
     diagnose: t("section_diagnose")
   };
   return map[section];
@@ -351,6 +353,21 @@ function renderAllPanels(settings: ExtensionSettings, activeSection: NavSection)
       </div>
     `,
 
+    sort: `
+      <p class="muted">Standardsortierung für die Trefferliste in Suchergebnissen. Dieselben Optionen wie im Overlay – ein Klick sortiert aufsteigend, ein erneuter Klick auf dasselbe Kriterium dreht auf absteigend (▲/▼).</p>
+      <div class="toggle">
+        <input id="sortAuto" type="checkbox" ${settings.sort.auto ? "checked" : ""} />
+        <div>
+          <label for="sortAuto">Automatisch sortieren</label>
+          <small>Sortiert die Trefferliste automatisch, sobald alle Seiten geladen und – bei Fahrtzeit/Fahrtstrecke – alle Fahrzeiten berechnet sind. Bis dahin zeigt das Overlay einen Ladeindikator.</small>
+        </div>
+      </div>
+      <div class="hikr-ext-sort-menu hikr-ext-sort-menu--options" data-sort-grid>
+        <div class="hikr-ext-sort-head">Sortieren nach</div>
+        <div class="hikr-ext-sort-list">${buildSortGridHtml(settings.sort.key, settings.sort.dir, true)}</div>
+      </div>
+    `,
+
     diagnose: `
       <div class="toggle">
         <input id="devLogging" type="checkbox" ${settings.dev?.consoleLogging ? "checked" : ""} />
@@ -444,6 +461,11 @@ function readSettings(current: ExtensionSettings): ExtensionSettings {
     },
     dev: {
       consoleLogging: checked("devLogging")
+    },
+    sort: {
+      auto: checked("sortAuto"),
+      key: current.sort.key,
+      dir: current.sort.dir
     }
   };
 }
@@ -615,6 +637,20 @@ async function boot() {
         activeSection = next;
         setActiveSection(activeSection);
       }
+      return;
+    }
+
+    const sortBtn = target.closest<HTMLElement>("[data-sort-grid] [data-sort-key]");
+    if (sortBtn) {
+      const key = sortBtn.dataset.sortKey ?? "";
+      const dir: SortDir = key === settings.sort.key
+        ? (settings.sort.dir === "asc" ? "desc" : "asc")
+        : "asc";
+      settings = { ...readSettings(settings), sort: { auto: checked("sortAuto"), key, dir } };
+      await sendMessage({ type: "SAVE_SETTINGS", settings });
+      const grid = document.querySelector<HTMLElement>("[data-sort-grid] .hikr-ext-sort-list");
+      if (grid) grid.innerHTML = buildSortGridHtml(settings.sort.key, settings.sort.dir, true);
+      flashStatus("status", t("btn_save") + " ✓");
       return;
     }
 

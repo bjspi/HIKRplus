@@ -253,14 +253,25 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   line-height: 1.35;
 }
 .hikr-ext-panel-toggle {
-  display: grid;
-  grid-template-columns: 32px 1fr;
+  display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 7px;
   color: var(--hikr-ink);
   font-size: 12px;
   cursor: pointer;
 }
+.hikr-ext-panel-toggle input { flex: 0 0 auto; }
+.hikr-ext-route-auto-spinner {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(130, 118, 111, 0.3);
+  border-top-color: var(--hikr-accent-strong);
+  animation: hikr-ext-spin .7s linear infinite;
+}
+.hikr-ext-route-auto-spinner[hidden] { display: none !important; }
 .hikr-ext-panel-toggle input {
   appearance: none;
   width: 30px;
@@ -332,6 +343,91 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
 }
 @keyframes hikr-ext-spin {
   to { transform: rotate(360deg); }
+}
+.hikr-ext-sort-menu {
+  border: 1px solid var(--hikr-line);
+  border-radius: 8px;
+  background: var(--hikr-surface-soft);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+.hikr-ext-sort-menu.hikr-ext-sort-busy {
+  opacity: .6;
+  pointer-events: none;
+}
+.hikr-ext-sort-head {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--hikr-ink-soft);
+  padding: 0 2px;
+}
+.hikr-ext-sort-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.hikr-ext-sort-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border: 1px solid var(--hikr-line-strong);
+  background: var(--hikr-surface);
+  color: var(--hikr-ink);
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+.hikr-ext-sort-item:hover {
+  background: var(--hikr-surface-soft);
+  border-color: var(--hikr-accent-soft);
+  color: var(--hikr-accent-strong);
+}
+.hikr-ext-sort-item.hikr-ext-sort-active {
+  border-color: var(--hikr-accent);
+  color: var(--hikr-accent-strong);
+  background: rgba(201, 122, 116, 0.1);
+}
+.hikr-ext-sort-arrow {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--hikr-accent-strong);
+}
+.hikr-ext-sort-note {
+  font-size: 10px;
+  color: var(--hikr-muted);
+  line-height: 1.35;
+  padding: 0 2px;
+}
+.hikr-ext-sort-note[hidden] { display: none !important; }
+.hikr-ext-autosort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--hikr-ink-soft);
+  background: var(--hikr-surface-soft);
+  border: 1px solid var(--hikr-line);
+  border-radius: 6px;
+  padding: 6px 9px;
+  line-height: 1.3;
+}
+.hikr-ext-autosort b { font-weight: 650; color: var(--hikr-ink); }
+.hikr-ext-autosort-hint { color: var(--hikr-muted); }
+.hikr-ext-sort-spinner {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(130, 118, 111, 0.35);
+  border-top-color: var(--hikr-accent-strong);
+  animation: hikr-ext-spin .75s linear infinite;
 }
 .hikr-ext-status {
   font-size: 11px;
@@ -441,6 +537,21 @@ li[id^="item_"] span.hikr-ext-tour-inline .hikr-ext-stats {
 .hikr-ext-route-time {
   color: var(--hikr-muted);
   font-size: 0.93em;
+}
+.hikr-ext-route-pending,
+.hikr-ext-route-unavailable {
+  color: var(--hikr-muted);
+  font-size: 0.93em;
+}
+.hikr-ext-route-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(130, 118, 111, 0.3);
+  border-top-color: var(--hikr-accent-strong);
+  animation: hikr-ext-spin .7s linear infinite;
 }
 .hikr-ext-sep {
   color: #aaa;

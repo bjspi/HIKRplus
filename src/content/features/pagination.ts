@@ -1,5 +1,6 @@
 import { sendMessage } from "../../shared/messages";
 import { absoluteUrl, isTourUrl, normalizeHikrUrl } from "../../shared/url";
+import { EVT_PAGINATION_DONE, beginWork, endWork } from "../pipeline-status";
 import type { HikrFeature } from "../feature-types";
 
 const PAGE_SIZE = 20;
@@ -63,6 +64,11 @@ function extractResults(doc: Document, baseUrl: string): Element | undefined {
 }
 
 async function loadExtraPages(pageType: string, maxPages: number, log: (message: string) => void): Promise<void> {
+  // Held until the whole prefetch loop ends (or fails) so the pipeline never reports
+  // idle while pages are still arriving. Per-page tour URLs are dispatched inside the
+  // loop, so waypoint enrichment starts as each page lands — not only at the end.
+  beginWork("pagination");
+  try {
   let url = nextLink(document) ?? fallbackNextUrl(pageType, location.href);
   const target = document.querySelector("div#contentmain_swiss") ?? document.body;
   console.log("[HIKR:pagination] start", { pageType, maxPages, firstUrl: url, currentHref: location.href });
@@ -127,6 +133,10 @@ async function loadExtraPages(pageType: string, maxPages: number, log: (message:
     console.log("[HIKR:pagination] done: no more pages found");
   } else {
     console.log(`[HIKR:pagination] done: reached maxPages limit (${maxPages}), next would have been:`, url);
+  }
+  } finally {
+    endWork("pagination");
+    document.dispatchEvent(new CustomEvent(EVT_PAGINATION_DONE));
   }
 }
 
