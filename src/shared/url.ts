@@ -55,6 +55,8 @@ function detectPageType(url: URL, documentRef: Document): PageType {
   // A region's tour list (/region127/tour/, incl. ?skip= / ?post_sort_dir= pages)
   // is treated as a region listing so the "region" autoload setting governs it.
   if (/^\/region\d+\/tour\/?$/i.test(url.pathname)) return "region";
+  // Favourite / curated lists (/list/6942/, incl. ?skip= pagination) are tour lists.
+  if (/^\/list\/\d+\/?$/i.test(url.pathname)) return "tourList";
   if (TOUR_LIST_RE.test(url.pathname)) return "tourList";
   if (url.pathname.includes("/dir/")) return "waypoint";
   if (REGION_RE.test(url.pathname)) return "region";
