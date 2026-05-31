@@ -140,7 +140,7 @@ The coordinate field in HIKR's radius search is extended with **address autocomp
 ---
 
 ### 📸 Gallery Lightbox
-Tour images open in a clean **full-screen lightbox** with keyboard navigation (← → to browse, Esc to close).
+Click any tour photo to open a slick **full-screen lightbox** right inside the tour report — no page reload, no leaving the page. A **thumbnail strip** lets you jump straight to any shot, and you can browse with the **← → arrow keys** (or **Esc** to close). Each photo shows its **original caption as the title**, an image counter (e.g. `15 / 32`), and an **↗ Originalbild** button that links straight to the full-resolution source image. **Ctrl + Click** falls back to hikr.org's classic photo view.
 
 ---
 
