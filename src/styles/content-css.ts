@@ -859,13 +859,24 @@ li[id^="item_"] span.hikr-ext-tour-inline .hikr-ext-stats {
   position: fixed;
   inset: 0;
   display: none;
-  grid-template-rows: auto 1fr auto;
-  padding: 20px;
-  background: rgba(42, 36, 34, 0.84);
+  flex-direction: column;
+  padding: 16px 20px;
+  background: rgba(25, 20, 18, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 2147482600;
   color: #ffffff;
 }
-.hikr-ext-lightbox[data-open="true"] { display: grid; }
+.hikr-ext-lightbox[data-open="true"] { display: flex; }
+.hikr-ext-lightbox-center {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 .hikr-ext-lightbox-bar {
   display: flex;
   align-items: center;
@@ -878,11 +889,15 @@ li[id^="item_"] span.hikr-ext-tour-inline .hikr-ext-stats {
   font-size: 15px;
   font-weight: 700;
   color: #f4efec;
-  padding: 8px 40px 2px;
+  padding: 2px 40px 0;
   line-height: 1.35;
+  max-width: 100%;
 }
 .hikr-ext-lightbox-stage {
+  flex: 0 1 auto;
+  width: 100%;
   min-height: 0;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 50px 1fr 50px;
   align-items: center;
@@ -891,7 +906,7 @@ li[id^="item_"] span.hikr-ext-tour-inline .hikr-ext-stats {
 .hikr-ext-lightbox img {
   justify-self: center;
   max-width: 100%;
-  max-height: calc(100vh - 160px);
+  max-height: calc(100vh - 230px);
   object-fit: contain;
   border-radius: 4px;
   image-orientation: from-image;
@@ -923,6 +938,101 @@ li[id^="item_"] span.hikr-ext-tour-inline .hikr-ext-stats {
   white-space: normal;
   overflow-wrap: anywhere;
   padding: 4px 56px 0;
+}
+.hikr-ext-lightbox-img-wrap {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hikr-ext-lightbox-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.25);
+  border-top-color: #ffffff;
+  animation: hikr-ext-spin .8s linear infinite;
+}
+.hikr-ext-lightbox-spinner[hidden] { display: none !important; }
+.hikr-ext-lightbox-photolink,
+.hikr-ext-lightbox-photolink:link,
+.hikr-ext-lightbox-photolink:visited,
+.hikr-ext-lightbox-photolink:active,
+.hikr-ext-lightbox-photolink:focus {
+  color: #f0b4ae !important;
+  text-decoration: none !important;
+  font-size: 12.5px;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.hikr-ext-lightbox-photolink:hover {
+  color: #ffc9c3 !important;
+  text-decoration: none !important;
+  background: rgba(255,255,255,0.24);
+  border-color: rgba(255,255,255,0.5);
+}
+.hikr-ext-lightbox-photolink[hidden] { display: none !important; }
+.hikr-ext-lightbox-title a.hikr-ext-link {
+  color: #ffd9a8 !important;
+  text-decoration: underline !important;
+}
+.hikr-ext-lightbox-thumbs {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  padding: 4px 8px 2px;
+  overflow: hidden;
+  min-height: 0;
+}
+.hikr-ext-lightbox-thumbs[hidden] { display: none !important; }
+.hikr-ext-lightbox-thumbs img {
+  height: 52px;
+  width: 70px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  opacity: 0.55;
+  flex: 0 0 auto;
+  transition: opacity .12s ease, border-color .12s ease;
+}
+.hikr-ext-lightbox-thumbs img:hover { opacity: 0.9; }
+.hikr-ext-lightbox-thumbs img.is-active { opacity: 1; border-color: #f0b4ae; }
+
+/* ── Minimap: extension-owned base-layer switcher (separate from hikr's) ── */
+.hikr-ext-leaflet-layers.leaflet-control-layers {
+  border: 2px solid #a04f4a !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 10px rgba(42, 36, 34, 0.28) !important;
+}
+.hikr-ext-leaflet-layers .leaflet-control-layers-toggle {
+  background-image: none !important;
+  position: relative;
+}
+.hikr-ext-leaflet-layers .leaflet-control-layers-toggle::before {
+  content: "⛰";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.hikr-ext-leaflet-layers-title {
+  font: 600 11px/1.3 Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #a04f4a;
+  padding: 1px 4px 5px;
+  white-space: nowrap;
 }
 .hikr-ext-map-modal {
   position: fixed;

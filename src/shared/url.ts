@@ -3,7 +3,10 @@ import type { PageContext, PageType } from "./types";
 const TOUR_RE = /https:\/\/www\.hikr\.org\/tour\/post\d+\.html/i;
 const WAYPOINT_RE = /^https:\/\/www\.hikr\.org\/dir\/[^/"'?#\s]+\/?$/i;
 const REGION_RE = /^\/region\d+\.html$/i;
-const TOUR_LIST_RE = /^\/tour\/?$/i;
+// Any path ending in /tour/ is a tour listing — the global list (/tour/), a region's
+// list (/region1179/tour/), a user's list (/leute/…/tour/), incl. ?skip= pagination.
+// Single tours (/tour/postN.html) are matched earlier and never reach this.
+const TOUR_LIST_RE = /\/tour\/?$/i;
 
 export function absoluteUrl(value: string, base = location.href): string {
   return new URL(value, base).href;
@@ -21,7 +24,12 @@ export function getTourId(url: string): string {
 }
 
 export function getWaypointId(url: string): string {
-  return normalizeHikrUrl(url).split("/dir/")[1]?.replace(/\//g, "") ?? normalizeHikrUrl(url);
+  const slug = normalizeHikrUrl(url).split("/dir/")[1]?.replace(/\//g, "");
+  if (!slug) return normalizeHikrUrl(url);
+  // hikr's numeric place id (piz_id) is the stable identity and always ends the
+  // slug (e.g. /dir/Berggasthof_Oytalhaus_11039 → 11039). Key the waypoint cache
+  // by it so harvested `pizs` and fetched pages share the same record.
+  return slug.match(/(\d+)$/)?.[1] ?? slug;
 }
 
 export function isTourUrl(url: string): boolean {
@@ -44,6 +52,9 @@ export function isAutoRoutePageType(pageType: PageType): boolean {
 function detectPageType(url: URL, documentRef: Document): PageType {
   if (url.pathname.includes("/filter.php")) return url.search ? "searchResults" : "explore";
   if (/\/tour\/post\d+\.html/i.test(url.pathname)) return "tour";
+  // A region's tour list (/region127/tour/, incl. ?skip= / ?post_sort_dir= pages)
+  // is treated as a region listing so the "region" autoload setting governs it.
+  if (/^\/region\d+\/tour\/?$/i.test(url.pathname)) return "region";
   if (TOUR_LIST_RE.test(url.pathname)) return "tourList";
   if (url.pathname.includes("/dir/")) return "waypoint";
   if (REGION_RE.test(url.pathname)) return "region";
