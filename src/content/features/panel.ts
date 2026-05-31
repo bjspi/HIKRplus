@@ -13,10 +13,12 @@ export const panelFeature: HikrFeature = {
   matchesPage: (context) => context.isTopFrame && (context.tourUrls.length > 0 || context.pageType === "searchResults"),
   run({ root, page, settings }) {
     if (root.querySelector(".hikr-ext-panel")) return;
+    // Excel / tour-details / map are listing tools — hide them on a single tour page.
+    const isTour = page.pageType === "tour";
     const autoloadEnabled = page.pageType in settings.tourDetailsAutoload
       ? Boolean(settings.tourDetailsAutoload[page.pageType as keyof typeof settings.tourDetailsAutoload])
       : false;
-    const detailsButton = autoloadEnabled
+    const detailsButton = (autoloadEnabled || isTour)
       ? ""
       : `<button class="hikr-ext-btn" data-hikr-action="enrich">${t("panel_btn_details")}</button>`;
     const savedRouteStart = localStorage.getItem("hikr.ext.route.start") ?? "";
@@ -55,8 +57,8 @@ export const panelFeature: HikrFeature = {
         <div class="hikr-ext-button-row">
           ${detailsButton}
           <button class="hikr-ext-btn" data-hikr-action="routes"${autoRoutesActive ? " hidden" : ""}>${t("panel_btn_routes")}</button>
-          <button class="hikr-ext-btn" data-hikr-action="map">${t("panel_btn_map")}</button>
-          <button class="hikr-ext-btn" data-hikr-action="excel">${t("panel_btn_excel")}</button>
+          ${isTour ? "" : `<button class="hikr-ext-btn" data-hikr-action="map">${t("panel_btn_map")}</button>`}
+          ${isTour ? "" : `<button class="hikr-ext-btn" data-hikr-action="excel">${t("panel_btn_excel")}</button>`}
           ${page.pageType === "searchResults"
             ? `<button class="hikr-ext-btn" data-hikr-action="sort">↕ Sortieren</button>`
             : ""}

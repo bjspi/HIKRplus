@@ -8,6 +8,6 @@ describe("url helpers", () => {
 
   it("extracts tour and waypoint ids", () => {
     expect(getTourId("https://www.hikr.org/tour/post12345.html")).toBe("12345");
-    expect(getWaypointId("https://www.hikr.org/dir/Test_123/")).toBe("Test_123");
+    expect(getWaypointId("https://www.hikr.org/dir/Test_123/")).toBe("123");
   });
 });

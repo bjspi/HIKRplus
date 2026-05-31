@@ -1,7 +1,7 @@
-import type { GeodataLink, TourCacheRecord, TourWaypointEntry, WaypointCacheRecord } from "./types";
+import type { Coordinates, GeodataLink, TourCacheRecord, TourWaypointEntry, WaypointCacheRecord } from "./types";
 import { TOUR_CACHE_VERSION } from "./types";
 import { parseGalleryPhotoIds } from "./photo-annotations";
-import { parseCoordinates } from "./coordinates";
+import { parseCoordinates, roundTo } from "./coordinates";
 import { absoluteUrl, getTourId, getWaypointId, isWaypointUrl, normalizeHikrUrl } from "./url";
 
 const FIELD_ALIASES = {
@@ -226,4 +226,45 @@ export function parseWaypointDocument(documentRef: Document, url: string): Waypo
 
 export function parseHtml(html: string, url: string): Document {
   return new DOMParser().parseFromString(html, "text/html");
+}
+
+export interface PizEntry {
+  id: string;
+  name?: string;
+  coordinates: Coordinates;
+  elevation?: number;
+  type?: string;
+}
+
+// Single-tour pages embed every minimap waypoint as `pizs.push({...})` blocks in
+// an inline script. Each carries piz_id (the numeric id that also ends the
+// /dir/Name_ID/ waypoint URLs), name, height and exact coordinates — so we can
+// harvest waypoint coordinates straight from the tour page instead of fetching
+// each waypoint separately.
+export function extractPizEntries(source: string): PizEntry[] {
+  const entries: PizEntry[] = [];
+  const chunks = source.split("pizs.push(");
+  for (let i = 1; i < chunks.length; i++) {
+    const end = chunks[i].indexOf("})");
+    const block = end >= 0 ? chunks[i].slice(0, end) : chunks[i].slice(0, 800);
+    const idMatch = block.match(/piz_id\s*:\s*(\d+)/);
+    const latMatch = block.match(/piz_lat\s*:\s*(-?\d+(?:\.\d+)?)/);
+    const lonMatch = block.match(/piz_lon\s*:\s*(-?\d+(?:\.\d+)?)/);
+    if (!idMatch || !latMatch || !lonMatch) continue;
+    const lat = Number(latMatch[1]);
+    const lng = Number(lonMatch[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) continue;
+    const nameMatch = block.match(/piz_name\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    const heightMatch = block.match(/piz_height\s*:\s*(\d+)/);
+    const typeMatch = block.match(/piz_type\s*:\s*"([^"]*)"/);
+    entries.push({
+      id: idMatch[1],
+      name: nameMatch ? nameMatch[1].replace(/\\"/g, '"') : undefined,
+      coordinates: { lat: roundTo(lat, 6), lng: roundTo(lng, 6) },
+      elevation: heightMatch ? Number(heightMatch[1]) : undefined,
+      type: typeMatch ? typeMatch[1] : undefined
+    });
+  }
+  return entries;
 }

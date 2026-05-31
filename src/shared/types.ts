@@ -181,6 +181,7 @@ export interface WaypointCacheRecord {
   url: string;
   name?: string;
   coordinates?: Coordinates;
+  elevation?: number;
   parsedAt: number;
   missingFields: string[];
 }

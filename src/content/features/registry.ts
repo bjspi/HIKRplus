@@ -4,6 +4,7 @@ import { exploreFormFeature } from "./explore-form";
 import { galleryLightboxFeature } from "./gallery";
 import { hoverPreviewFeature } from "./hover-preview";
 import { miniMapProfileFeature } from "./minimap-profile";
+import { waypointPizHarvestFeature } from "./waypoint-piz-harvest";
 import { paginationFeature } from "./pagination";
 import { panelFeature } from "./panel";
 import { routesFeature } from "./routes";
@@ -16,6 +17,7 @@ import { snowResearchFeature } from "./snow-research";
 export const features: HikrFeature[] = [
   panelFeature,
   miniMapProfileFeature,
+  waypointPizHarvestFeature,
   galleryLightboxFeature,
   exploreFormFeature,
   paginationFeature,

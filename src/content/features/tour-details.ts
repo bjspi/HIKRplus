@@ -7,6 +7,7 @@ import type { TourCacheRecord, WaypointCacheRecord } from "../../shared/types";
 import { detailHtml, ensureTourPlaceholder, findTourContainer } from "../dom";
 import { writeTourSortData } from "../sort-data";
 import { EVT_TOUR_READY, EVT_TOURS_APPENDED, beginWork, endWork, type TourReadyDetail } from "../pipeline-status";
+import { harvestPizWaypoints } from "./waypoint-piz-harvest";
 import type { FeatureContext, HikrFeature } from "../feature-types";
 
 function tourLooksParseable(tour: TourCacheRecord, html: string): boolean {
@@ -66,6 +67,11 @@ async function loadOrFetchTour(url: string, force: boolean): Promise<TourCacheRe
     geodata: tour.geodataCount,
     missing: tour.missingFields
   });
+  // Harvest waypoint coordinates from the tour's embedded `pizs` — this also covers
+  // tours enriched from a listing overlay, not just live single-tour pages. Awaited
+  // so the waypoint cache is populated before the start-waypoint lookup below, which
+  // then hits the cache instead of firing a per-waypoint request.
+  await harvestPizWaypoints(html, tour.waypointUrls, tour.title ?? url);
   try {
     await sendMessage({ type: "PUT_CACHED_TOUR", tour });
   } catch (error) {
