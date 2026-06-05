@@ -27,6 +27,7 @@ export interface PageContext {
   isTopFrame: boolean;
   tourUrls: string[];
   waypointUrls: string[];
+  hasListings: boolean;
   hasGallery: boolean;
   hasExploreForm: boolean;
 }

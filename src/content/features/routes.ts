@@ -143,12 +143,9 @@ function setupRouteStartSuggestions(): void {
 }
 
 function setupAutoRoutes(context: Parameters<HikrFeature["run"]>[0]): void {
-  // Automatic drive-time routing runs ONLY on search-results pages and single tour
-  // pages — never on home, custom lists, tour lists, or waypoint (/dir/) pages. The
-  // auto toggle is only rendered there (see panel.ts); this guard is the behavioral
-  // source of truth so the auto path can never fire elsewhere even if the toggle
-  // reappears. The manual "Fahrtzeiten" button stays available everywhere via
-  // calculateVisibleRoutes().
+  // Automatic drive-time routing runs only on page types where the auto toggle is
+  // rendered (see panel.ts). The manual "Fahrtzeiten" button stays available
+  // everywhere via calculateVisibleRoutes().
   if (!isAutoRoutePageType(context.page.pageType)) return;
   const toggle = routeAutoToggle();
   if (!toggle || toggle.dataset.hikrAutoReady) return;

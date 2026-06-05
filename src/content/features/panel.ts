@@ -10,7 +10,7 @@ export const panelFeature: HikrFeature = {
   id: "siteStyles",
   title: "HIKR Action Panel",
   defaultEnabled: true,
-  matchesPage: (context) => context.isTopFrame && (context.tourUrls.length > 0 || context.pageType === "searchResults"),
+  matchesPage: (context) => context.isTopFrame && (context.tourUrls.length > 0 || context.pageType === "searchResults" || context.hasListings),
   run({ root, page, settings }) {
     if (root.querySelector(".hikr-ext-panel")) return;
     // Excel / tour-details / map are listing tools — hide them on a single tour page.
@@ -61,6 +61,9 @@ export const panelFeature: HikrFeature = {
           ${isTour ? "" : `<button class="hikr-ext-btn" data-hikr-action="excel">${t("panel_btn_excel")}</button>`}
           ${page.pageType === "searchResults"
             ? `<button class="hikr-ext-btn" data-hikr-action="sort">↕ Sortieren</button>`
+            : ""}
+          ${page.hasListings && !isTour
+            ? `<button class="hikr-ext-btn" data-hikr-action="filter">Filter</button>`
             : ""}
           ${page.pageType === "searchResults" && settings.features.snowResearch
             ? `<button class="hikr-ext-btn" data-hikr-action="snow">❄ Schneelagen</button>`
