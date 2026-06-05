@@ -95,6 +95,9 @@ async function boot(): Promise<void> {
   if (page.pageType === "searchResults" && page.tourUrls.length > 0 && settings.sort.auto) {
     void import("./features/sort-results").then(({ runAutoSort }) => runAutoSort(context));
   }
+  if (page.hasListings) {
+    void import("./features/listing-filter").then(({ initializeListingFilter }) => initializeListingFilter(context));
+  }
   document.addEventListener("click", (event) => {
     const button = (event.target as HTMLElement).closest<HTMLElement>("[data-hikr-action]");
     if (!button) return;
@@ -109,6 +112,9 @@ async function boot(): Promise<void> {
     }
     if (action === "sort") {
       void import("./features/sort-results").then(({ openSortMenu }) => openSortMenu(context));
+    }
+    if (action === "filter") {
+      void import("./features/listing-filter").then(({ openListingFilterMenu }) => openListingFilterMenu(context));
     }
   });
   chrome.runtime.onMessage.addListener((message: { type?: string; action?: string }) => {

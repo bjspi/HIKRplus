@@ -414,6 +414,224 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   padding: 0 2px;
 }
 .hikr-ext-sort-note[hidden] { display: none !important; }
+.hikr-ext-listing-filter-menu {
+  border: 1px solid var(--hikr-line);
+  border-radius: 8px;
+  background: var(--hikr-surface-soft);
+  padding: 9px;
+  display: grid;
+  gap: 9px;
+}
+.hikr-ext-filter-head,
+.hikr-ext-filter-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hikr-ext-filter-head {
+  color: var(--hikr-ink-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+.hikr-ext-filter-result {
+  color: var(--hikr-muted);
+  font-weight: 600;
+}
+.hikr-ext-filter-section {
+  display: grid;
+  gap: 5px;
+}
+.hikr-ext-filter-label {
+  color: var(--hikr-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+.hikr-ext-filter-label output {
+  color: var(--hikr-accent-strong);
+  font-size: 11px;
+  font-weight: 650;
+}
+.hikr-ext-filter-range {
+  --hikr-filter-start: 0%;
+  --hikr-filter-end: 100%;
+  --hikr-filter-track: #e8ddd9;
+  --hikr-filter-fill: #e4a09a;
+  --hikr-filter-thumb: 14px;
+  position: relative;
+  height: 24px;
+  margin-top: 1px;
+  overflow: visible;
+}
+.hikr-ext-filter-range::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--hikr-filter-track) 0%,
+    var(--hikr-filter-track) var(--hikr-filter-start),
+    var(--hikr-filter-fill) var(--hikr-filter-start),
+    var(--hikr-filter-fill) var(--hikr-filter-end),
+    var(--hikr-filter-track) var(--hikr-filter-end),
+    var(--hikr-filter-track) 100%
+  );
+}
+.hikr-ext-filter-range input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--hikr-filter-thumb) / -2);
+  width: calc(100% + var(--hikr-filter-thumb));
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+  pointer-events: none;
+}
+.hikr-ext-filter-range input[type="range"][data-hikr-filter$="-min"] { z-index: 2; }
+.hikr-ext-filter-range input[type="range"][data-hikr-filter$="-max"] { z-index: 3; }
+.hikr-ext-filter-range input[type="range"]::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  height: 4px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.hikr-ext-filter-range input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--hikr-filter-thumb);
+  height: var(--hikr-filter-thumb);
+  margin-top: -5px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #de958f;
+  box-shadow: 0 1px 4px rgba(42, 36, 34, .22);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hikr-ext-filter-range input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.hikr-ext-filter-range input[type="range"]::-moz-range-progress {
+  background: transparent;
+  border: 0;
+}
+.hikr-ext-filter-range input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #de958f;
+  box-shadow: 0 1px 4px rgba(42, 36, 34, .22);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.hikr-ext-filter-range input[type="range"]::-moz-focus-outer {
+  border: 0;
+}
+.hikr-ext-filter-range input[type="range"]:focus {
+  outline: none;
+}
+.hikr-ext-filter-range input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 1px 4px rgba(42, 36, 34, .22), 0 0 0 3px rgba(222, 149, 143, .24);
+}
+.hikr-ext-filter-range input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 1px 4px rgba(42, 36, 34, .22), 0 0 0 3px rgba(222, 149, 143, .24);
+}
+.hikr-ext-filter-range input[type="range"]:disabled::-webkit-slider-thumb {
+  background: #c9bfbb;
+  cursor: default;
+}
+.hikr-ext-filter-range input[type="range"]:disabled::-moz-range-thumb {
+  background: #c9bfbb;
+  cursor: default;
+}
+.hikr-ext-filter-range:has(input[type="range"]:disabled) {
+  --hikr-filter-fill: #d6cbc7;
+}
+.hikr-ext-filter-note {
+  color: var(--hikr-muted);
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+.hikr-ext-filter-note[hidden] {
+  display: none !important;
+}
+.hikr-ext-filter-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--hikr-ink);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.hikr-ext-filter-check input {
+  margin: 0;
+  accent-color: #de958f;
+}
+.hikr-ext-filter-subcheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--hikr-muted);
+  font-size: 10.5px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.hikr-ext-filter-subcheck input {
+  flex: 0 0 auto;
+  margin: 1px 0 0;
+  accent-color: #de958f;
+}
+.hikr-ext-filter-reset {
+  border: 1px solid var(--hikr-line-strong);
+  background: var(--hikr-surface);
+  color: var(--hikr-ink);
+  min-height: 28px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hikr-ext-filter-reset:hover {
+  border-color: var(--hikr-accent-soft);
+  color: var(--hikr-accent-strong);
+}
+.hikr-ext-btn.hikr-ext-filter-active {
+  border-color: var(--hikr-accent);
+  color: var(--hikr-accent-strong);
+  background: rgba(201, 122, 116, 0.1);
+}
+.content-list.hikr-ext-listing-filter-muted,
+.hikr-ext-listing-filter-muted {
+  opacity: .48;
+  filter: grayscale(.35);
+}
+.content-list.hikr-ext-listing-filter-fade,
+.hikr-ext-listing-filter-fade {
+  opacity: 0 !important;
+  transform: translateY(-2px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.content-list.hikr-ext-listing-filter-hidden,
+.hikr-ext-listing-filter-hidden {
+  display: none !important;
+}
 .hikr-ext-autosort {
   display: flex;
   align-items: center;

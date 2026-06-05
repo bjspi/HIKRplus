@@ -37,6 +37,8 @@ describe("sort value parsing", () => {
 
   it("orders hiking grades with +/- modifiers", () => {
     expect(parseHikeGrade("T5")).toBe(5);
+    expect(parseHikeGrade("T3+")).toBeCloseTo(3.3);
+    expect(parseHikeGrade("T4-")).toBeCloseTo(3.7);
     expect(parseHikeGrade("T5+")).toBeCloseTo(5.3);
     expect(parseHikeGrade("T5-")).toBeCloseTo(4.7);
     expect(parseHikeGrade("T6")).toBe(6);
@@ -49,10 +51,13 @@ describe("sort value parsing", () => {
     expect(parseClimbGrade("I")).toBe(1);
     expect(parseClimbGrade("II")).toBe(2);
     expect(parseClimbGrade("VI")).toBe(6);
+    expect(parseClimbGrade("VIII")).toBe(8);
     expect(parseClimbGrade("VI-")).toBeCloseTo(5.7);
     expect(parseClimbGrade("II+")).toBeCloseTo(2.3);
     expect(parseClimbGrade("I") < parseClimbGrade("II")).toBe(true);
     expect(parseClimbGrade("L")).toBeNaN(); // mountainbike badge, not a climbing grade
+    expect(parseClimbGrade("K5")).toBeNaN(); // via ferrata badge, not a climbing grade
+    expect(parseClimbGrade("WS-")).toBeNaN(); // alpine tour badge, not a climbing grade
   });
 
   it("normalises ISO hike dates to a sortable number", () => {

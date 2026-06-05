@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTourId, getWaypointId, normalizeHikrUrl } from "../shared/url";
+import { getTourId, getWaypointId, isAutoRoutePageType, normalizeHikrUrl } from "../shared/url";
 
 describe("url helpers", () => {
   it("normalizes URLs and removes query/hash/trailing slash", () => {
@@ -9,5 +9,12 @@ describe("url helpers", () => {
   it("extracts tour and waypoint ids", () => {
     expect(getTourId("https://www.hikr.org/tour/post12345.html")).toBe("12345");
     expect(getWaypointId("https://www.hikr.org/dir/Test_123/")).toBe("123");
+  });
+
+  it("allows automatic routes on search, tour, and waypoint pages", () => {
+    expect(isAutoRoutePageType("searchResults")).toBe(true);
+    expect(isAutoRoutePageType("tour")).toBe(true);
+    expect(isAutoRoutePageType("waypoint")).toBe(true);
+    expect(isAutoRoutePageType("home")).toBe(false);
   });
 });

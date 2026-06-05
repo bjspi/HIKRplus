@@ -33,7 +33,7 @@ export function criterionLabel(key: string): string {
   return SORT_CRITERIA.find((c) => c.key === key)?.label ?? key;
 }
 
-const ROMAN: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7 };
+const ROMAN: Record<string, number> = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8 };
 
 function modifier(sign: string | undefined): number {
   return sign === "+" ? 0.3 : sign === "-" ? -0.3 : 0;

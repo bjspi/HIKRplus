@@ -40,10 +40,10 @@ export function isWaypointUrl(url: string): boolean {
   return WAYPOINT_RE.test(url);
 }
 
-// Pages where automatic drive-time routing is allowed: search results and single
-// tour pages. Single source of truth shared by the behavioral gate (routes.ts) and
-// the panel UI (panel.ts) so the toggle and the auto path can never disagree.
-const AUTO_ROUTE_PAGE_TYPES = new Set<PageType>(["searchResults", "tour"]);
+// Pages where automatic drive-time routing is allowed. Single source of truth
+// shared by the behavioral gate (routes.ts) and the panel UI (panel.ts) so the
+// toggle and the auto path can never disagree.
+const AUTO_ROUTE_PAGE_TYPES = new Set<PageType>(["searchResults", "tour", "waypoint"]);
 
 export function isAutoRoutePageType(pageType: PageType): boolean {
   return AUTO_ROUTE_PAGE_TYPES.has(pageType);
@@ -84,6 +84,7 @@ export function detectPageContext(documentRef: Document, href = location.href): 
     isTopFrame: window.top === window,
     tourUrls: [...tourUrls],
     waypointUrls: [...waypointUrls],
+    hasListings: Boolean(documentRef.querySelector(".content-list")),
     hasGallery: Boolean(documentRef.querySelector("#new_gallery")),
     hasExploreForm: Boolean(documentRef.querySelector('form[action*="filter.php"]'))
   };
