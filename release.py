@@ -4,8 +4,9 @@
 
 Reads the extension version from public/manifest.json (the single source of
 truth), keeps package.json's version in sync, and guards against double-
-releases via a dedicated .released marker file. Pushing the git tag triggers
-the GitHub Actions workflow that builds the official release with ZIPs.
+releases via a dedicated .released marker file. The git tag is pushed only at
+the very end; that triggers the GitHub Actions workflow that builds the
+official release with ZIPs.
 
 Both manifest.json and package.json always keep a clean semver; the "already
 released" state lives only in .released, so no version field is ever corrupted.
@@ -101,8 +102,17 @@ def show_summary(tag: str, version: str, created_tag: bool) -> None:
     lines.append(f"  [dim].released:[/dim]      [yellow]{version}[/yellow]")
     if created_tag:
         lines.append(f"\n  [dim]Release-Seite: github.com/bjspi/HIKRplus/releases[/dim]")
-    lines.append(f"  [dim]Nächster Release erfordert neue Version in public/manifest.json[/dim]")
+    lines.append(f"  [dim]Nächster Release braucht neue Version oder den angebotenen Patch-Bump[/dim]")
     console.print(Panel("\n".join(lines), title="[green]  Done[/green]", border_style="green"))
+
+
+def show_dirty_status(dirty: str) -> None:
+    """Display the current dirty git status."""
+    console.print(Panel(
+        f"[bold yellow]Uncommitted changes gefunden:[/bold yellow]\n\n[white]{dirty}[/white]",
+        title="[yellow]  Working Tree[/yellow]",
+        border_style="yellow",
+    ))
 
 
 # ── File I/O ──────────────────────────────────────────────────────────────────
@@ -120,6 +130,14 @@ def write_json(path: Path, data: dict) -> None:
     with path.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
+
+
+def write_extension_version(version: str) -> None:
+    """Write *version* to public/manifest.json."""
+    manifest = read_json(MANIFEST_PATH)
+    manifest["version"] = version
+    write_json(MANIFEST_PATH, manifest)
+    console.print(f"[green]  manifest.json → [bold]{version}[/bold][/green]")
 
 
 # ── Git ───────────────────────────────────────────────────────────────────────
@@ -150,28 +168,103 @@ def read_released_version() -> str:
     return RELEASED_MARKER.read_text(encoding="utf-8").strip()
 
 
-def ensure_not_released(version: str) -> None:
-    """Abort if .released already records this exact version.
+def local_tag_exists(tag: str) -> bool:
+    """Return True if *tag* exists locally."""
+    return bool(git("tag", "-l", tag, check=False).stdout.strip())
 
-    Bumping the version in public/manifest.json clears the block automatically,
-    since the marker then no longer matches.
-    """
+
+def remote_tag_exists(tag: str) -> bool:
+    """Return True if *tag* exists on origin. Network errors are warned, not fatal."""
+    result = git("ls-remote", "--tags", "origin", tag, check=False)
+    if result.returncode != 0:
+        console.print(f"[yellow]  Remote-Tag-Prüfung fehlgeschlagen: {result.stderr.strip()}[/yellow]")
+        return False
+    return bool(result.stdout.strip())
+
+
+def release_block_reason(version: str) -> str:
+    """Return a human-readable reason why *version* is already released, or ''. """
+    tag = f"v{version}"
     if read_released_version() == version:
+        return f".released enthält bereits {version}"
+    if local_tag_exists(tag):
+        return f"lokaler Tag {tag} existiert bereits"
+    if remote_tag_exists(tag):
+        return f"Remote-Tag origin/{tag} existiert bereits"
+    return ""
+
+
+def bump_patch_version(version: str) -> str:
+    """Increment the last semver component, e.g. 0.2.9 -> 0.2.10."""
+    parts = version.split(".")
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
         abort(
-            "Bereits released",
-            f"[bold yellow]Version [white]{version}[/white] wurde bereits released.\n\n"
-            "[white]Bitte neue Version in [cyan]public/manifest.json[/cyan] vergeben.[/white]",
+            "Version nicht automatisch bumpbar",
+            f"[white]Version [cyan]{version}[/cyan] ist kein x.y.z-Semver. Bitte manuell in public/manifest.json ändern.[/white]",
         )
+    parts[-1] = str(int(parts[-1]) + 1)
+    return ".".join(parts)
 
 
-def ensure_clean_worktree() -> None:
-    """Abort if there are any uncommitted changes in the working tree."""
-    dirty = git("status", "--porcelain", check=False).stdout.strip()
-    if dirty:
+def ensure_releasable_or_offer_bump(version: str) -> str:
+    """Offer to bump the patch version while the current version is already released."""
+    while True:
+        reason = release_block_reason(version)
+        if not reason:
+            return version
+        next_version = bump_patch_version(version)
+        console.print(Panel(
+            f"[bold yellow]Version [white]{version}[/white] wurde bereits released.[/bold yellow]\n"
+            f"[dim]{reason}[/dim]\n\n"
+            f"[white]Patch-Version automatisch auf [cyan]{next_version}[/cyan] erhöhen?[/white]",
+            title="[yellow]  Bereits released[/yellow]",
+            border_style="yellow",
+        ))
+        if not confirm(f"Version {version} → {next_version} bumpen?", default=True):
+            abort(
+                "Bereits released",
+                "[white]Bitte neue Version in [cyan]public/manifest.json[/cyan] vergeben oder den Release abbrechen.[/white]",
+            )
+        write_extension_version(next_version)
+        sync_package_version(next_version)
+        version = next_version
+
+
+def dirty_status() -> str:
+    """Return git status --porcelain output."""
+    return git("status", "--porcelain", check=False).stdout.strip()
+
+
+def prompt_text(question: str, default: str) -> str:
+    """Ask a free-text question via questionary."""
+    answer = questionary.text(question, default=default).ask()
+    if answer is None:
+        console.print("[yellow]Abgebrochen.[/yellow]")
+        sys.exit(0)
+    return answer.strip()
+
+
+def handle_uncommitted_changes(version: str, create_tag: bool) -> bool:
+    """Offer to commit and optionally push uncommitted changes. Returns True if pushed."""
+    dirty = dirty_status()
+    if not dirty:
+        return False
+    show_dirty_status(dirty)
+    if not confirm("Uncommitted changes jetzt committen?", default=True):
         abort(
             "Uncommitted Changes",
-            f"[bold yellow]Bitte zuerst alles committen:\n\n[white]{dirty}[/white]",
+            "[white]Ohne Commit kann der Branch nicht sauber gepusht oder released werden.[/white]",
         )
+    default_message = f"chore: prepare release v{version}" if create_tag else "chore: update HikrPlus"
+    message = prompt_text("Commit-Message", default_message) or default_message
+    with console.status("[cyan]Änderungen committen...[/cyan]"):
+        git("add", "-A")
+        git("commit", "-m", message)
+    console.print(f"[green]  Commit erstellt: [cyan]{message}[/cyan][/green]")
+    if confirm("Diesen Commit direkt pushen?", default=True):
+        do_push()
+        return True
+    return False
 
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
@@ -199,13 +292,14 @@ def do_push() -> None:
 
 
 def do_tag(tag: str) -> None:
-    """Create *tag* locally and push it to origin. Skips silently if the tag already exists.
+    """Create *tag* locally and push it to origin.
 
     Pushing the tag triggers the GitHub Actions release workflow.
     """
-    if git("tag", "-l", tag, check=False).stdout.strip():
-        console.print(f"[yellow]  Tag [cyan]{tag}[/cyan] existiert bereits – übersprungen.[/yellow]")
-        return
+    if local_tag_exists(tag):
+        abort("Tag existiert bereits", f"[white]Lokaler Tag [cyan]{tag}[/cyan] existiert bereits.[/white]")
+    if remote_tag_exists(tag):
+        abort("Tag existiert bereits", f"[white]Remote-Tag [cyan]origin/{tag}[/cyan] existiert bereits.[/white]")
     with console.status(f"[cyan]Tag {tag} erstellen...[/cyan]"):
         git("tag", tag)
         git("push", "origin", tag)
@@ -229,11 +323,12 @@ def sync_package_version(version: str) -> bool:
 
 
 def finalize_release(version: str) -> None:
-    """Record *version* in .released and push the marker commit.
+    """Record *version* in .released and commit the marker.
 
     This is the burn step: it blocks re-releasing the same version. Both
     manifest.json and package.json keep their clean semver — only .released
     carries the released-state. package.json is synced into the same commit.
+    The caller pushes the branch before pushing the final release tag.
     """
     RELEASED_MARKER.write_text(f"{version}\n", encoding="utf-8")
     package_changed = sync_package_version(version)
@@ -242,9 +337,8 @@ def finalize_release(version: str) -> None:
         git("add", str(RELEASED_MARKER))
         if package_changed:
             git("add", str(PACKAGE_PATH))
-        git("commit", "-m", f"chore: mark v{version} as released [skip ci]")
-        git("push")
-    console.print("[green]  Release-Marker gepushed[/green]")
+        git("commit", "-m", f"chore: mark v{version} as released")
+    console.print("[green]  Release-Marker committed[/green]")
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -256,30 +350,41 @@ def main(no_tag: bool) -> None:
 
     Zwei Modi:
       • Release: Tag wird gepusht → GitHub Actions baut Chrome- + Firefox-ZIP,
-        danach wird die Version via .released gesperrt.
+        davor wird die Version via .released gesperrt. Der Tag kommt zuletzt.
       • Nur Push (--no-tag oder Tag-Frage verneinen): pusht den Branch ohne Tag,
         Release-Build oder .released-Änderung — ideal für README/Docs.
     """
     show_header()
 
-    ensure_clean_worktree()
-
     version = read_extension_version()
-    tag = f"v{version}"
-
     create_tag = ask_create_tag(no_tag)
 
     if create_tag:
-        ensure_not_released(version)
+        version = ensure_releasable_or_offer_bump(version)
+
+    tag = f"v{version}"
+    pushed_uncommitted_commit = handle_uncommitted_changes(version, create_tag)
+    remaining_dirty = dirty_status()
+    if remaining_dirty:
+        show_dirty_status(remaining_dirty)
+        abort(
+            "Uncommitted Changes",
+            "[white]Vor Push oder Release muss der Working Tree sauber sein.[/white]",
+        )
+
+    if create_tag:
         show_release_info(version, tag)
-        if not confirm(f"Release {tag} jetzt pushen?"):
+        if not confirm(f"Release {tag} vorbereiten und Tag ganz am Ende pushen?"):
             sys.exit(0)
         console.print()
+        finalize_release(version)
         do_push()
         do_tag(tag)
-        finalize_release(version)
         show_summary(tag, version, True)
     else:
+        if pushed_uncommitted_commit:
+            show_push_summary()
+            return
         if not confirm("Aktuellen Branch jetzt pushen (ohne Release)?"):
             sys.exit(0)
         console.print()

@@ -1,7 +1,8 @@
 import L from "leaflet";
+import { devLog, devWarn } from "../../shared/dev-log";
 import { sendMessage } from "../../shared/messages";
 import { parseHtml, parseWaypointDocument } from "../../shared/parser";
-import { getWaypointId } from "../../shared/url";
+import { collectHikrTourUrls, collectVisibleListingTourUrls, getWaypointId } from "../../shared/url";
 import type { MapPoint, TourCacheRecord, WaypointCacheRecord } from "../../shared/types";
 import { detailHtml } from "../dom";
 import type { HikrFeature } from "../feature-types";
@@ -34,6 +35,18 @@ interface StartpointMapPoint extends MapPoint {
   waypoint?: WaypointCacheRecord;
 }
 
+function currentListingCards(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>(".content-list")].filter((card) =>
+    !card.classList.contains("hikr-ext-listing-filter-hidden")
+    && !card.classList.contains("hikr-ext-listing-filter-fade")
+  );
+}
+
+function collectCurrentTourUrls(): string[] {
+  if (!document.querySelector(".content-list")) return collectHikrTourUrls(document, location.href);
+  return collectVisibleListingTourUrls(document, location.href);
+}
+
 function esc(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch] ?? ch));
 }
@@ -43,7 +56,9 @@ async function loadWaypoint(url: string): Promise<WaypointCacheRecord | undefine
   try {
     const { waypoint } = await sendMessage<{ waypoint: WaypointCacheRecord | undefined }>({ type: "GET_CACHED_WAYPOINT", id });
     if (waypoint) return waypoint;
-  } catch {}
+  } catch (error) {
+    devWarn("map", "GET_CACHED_WAYPOINT failed", { url, id, error });
+  }
   try {
     const { html } = await sendMessage<{ html: string }>({ type: "FETCH_HIKR_PAGE", url });
     const record = parseWaypointDocument(parseHtml(html, url), url);
@@ -51,7 +66,8 @@ async function loadWaypoint(url: string): Promise<WaypointCacheRecord | undefine
       await sendMessage({ type: "PUT_CACHED_WAYPOINT", waypoint: record }).catch(() => undefined);
     }
     return record;
-  } catch {
+  } catch (error) {
+    devWarn("map", "FETCH/parse waypoint failed", { url, id, error });
     return undefined;
   }
 }
@@ -215,19 +231,43 @@ export const startpointMapFeature: HikrFeature = {
         const map = createMap(container, context);
         const points: StartpointMapPoint[] = [];
         try {
-          if (context.page.tourUrls.length > 0) {
-            const { tours } = await enrichVisibleTours(context.page.tourUrls, false, {
+          const currentTourUrls = collectCurrentTourUrls();
+          devLog("map", "open", {
+            pageType: context.page.pageType,
+            bootTours: context.page.tourUrls.length,
+            currentTours: currentTourUrls.length,
+            listingCards: document.querySelectorAll(".content-list").length,
+            currentListingCards: currentListingCards().length,
+            bootWaypoints: context.page.waypointUrls.length
+          });
+          if (currentTourUrls.length > 0) {
+            const { tours } = await enrichVisibleTours(currentTourUrls, false, {
               waypointGmapsLinks: context.settings.ui.waypointGmapsLinks
             });
             if (runId !== activeMapRun || activeMap !== map) return;
+            devLog("map", "enriched tours", {
+              requested: currentTourUrls.length,
+              parsed: tours.length,
+              withoutStartWaypoint: tours.filter((tour) => !tour.startWaypointUrl).length
+            });
             let loaded = 0;
             for (const tour of tours) {
               loaded++;
               setMapStatus(modal, `Startpunkte werden geladen... ${loaded}/${tours.length}`);
+              if (!tour.startWaypointUrl) {
+                devWarn("map", "tour without start waypoint", { tourUrl: tour.url, title: tour.title, missingFields: tour.missingFields });
+                continue;
+              }
               const waypoint = tour.startWaypointUrl ? await loadWaypoint(tour.startWaypointUrl) : undefined;
               if (runId !== activeMapRun || activeMap !== map) return;
               const point = pointFromTour(tour, waypoint);
               if (point) points.push(point);
+              else devWarn("map", "start waypoint without coordinates", {
+                tourUrl: tour.url,
+                startWaypointUrl: tour.startWaypointUrl,
+                waypointFound: Boolean(waypoint),
+                waypointName: waypoint?.name
+              });
             }
           } else {
             let loaded = 0;

@@ -40,6 +40,62 @@ export function isWaypointUrl(url: string): boolean {
   return WAYPOINT_RE.test(url);
 }
 
+export function collectHikrTourUrls(root: ParentNode, baseUrl = location.href): string[] {
+  const urls = new Set<string>();
+  root.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((anchor) => {
+    const href = anchor.getAttribute("href") ?? anchor.href;
+    try {
+      const url = absoluteUrl(href, baseUrl);
+      const normalized = normalizeHikrUrl(url);
+      if (isTourUrl(normalized)) urls.add(normalized);
+    } catch {
+      /* Ignore malformed/non-http hrefs from the page. */
+    }
+  });
+  return [...urls];
+}
+
+function isFilteredOutListing(card: HTMLElement): boolean {
+  return card.classList.contains("hikr-ext-listing-filter-hidden")
+    || card.classList.contains("hikr-ext-listing-filter-fade");
+}
+
+// Tour URLs from listings still visible after the listing filter. Resolved per
+// anchor against its NEAREST `.content-list` card (not by iterating cards), so a
+// nested/outer wrapper that also carries the `.content-list` class can never leak
+// the hidden tours it contains back in. Anchors outside any card are ignored —
+// only tours that belong to a listing card count.
+export function collectVisibleListingTourUrls(root: ParentNode, baseUrl = location.href): string[] {
+  const urls = new Set<string>();
+  root.querySelectorAll<HTMLAnchorElement>(".content-list a[href]").forEach((anchor) => {
+    const card = anchor.closest<HTMLElement>(".content-list");
+    if (card && isFilteredOutListing(card)) return;
+    const href = anchor.getAttribute("href") ?? anchor.href;
+    try {
+      const normalized = normalizeHikrUrl(absoluteUrl(href, baseUrl));
+      if (isTourUrl(normalized)) urls.add(normalized);
+    } catch {
+      /* Ignore malformed/non-http hrefs from the page. */
+    }
+  });
+  return [...urls];
+}
+
+export function collectHikrWaypointUrls(root: ParentNode, baseUrl = location.href): string[] {
+  const urls = new Set<string>();
+  root.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((anchor) => {
+    const href = anchor.getAttribute("href") ?? anchor.href;
+    try {
+      const url = absoluteUrl(href, baseUrl);
+      const normalized = normalizeHikrUrl(url);
+      if (isWaypointUrl(normalized)) urls.add(normalized);
+    } catch {
+      /* Ignore malformed/non-http hrefs from the page. */
+    }
+  });
+  return [...urls];
+}
+
 // Pages where automatic drive-time routing is allowed. Single source of truth
 // shared by the behavioral gate (routes.ts) and the panel UI (panel.ts) so the
 // toggle and the auto path can never disagree.
@@ -66,15 +122,6 @@ function detectPageType(url: URL, documentRef: Document): PageType {
 }
 
 export function detectPageContext(documentRef: Document, href = location.href): PageContext {
-  const tourUrls = new Set<string>();
-  const waypointUrls = new Set<string>();
-
-  documentRef.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((anchor) => {
-    const url = absoluteUrl(anchor.href, href);
-    if (isTourUrl(url)) tourUrls.add(normalizeHikrUrl(url));
-    if (isWaypointUrl(url)) waypointUrls.add(normalizeHikrUrl(url));
-  });
-
   const url = new URL(href);
   const pageType: PageType = detectPageType(url, documentRef);
 
@@ -82,8 +129,8 @@ export function detectPageContext(documentRef: Document, href = location.href): 
     url: href,
     pageType,
     isTopFrame: window.top === window,
-    tourUrls: [...tourUrls],
-    waypointUrls: [...waypointUrls],
+    tourUrls: collectHikrTourUrls(documentRef, href),
+    waypointUrls: collectHikrWaypointUrls(documentRef, href),
     hasListings: Boolean(documentRef.querySelector(".content-list")),
     hasGallery: Boolean(documentRef.querySelector("#new_gallery")),
     hasExploreForm: Boolean(documentRef.querySelector('form[action*="filter.php"]'))

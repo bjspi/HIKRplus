@@ -1,13 +1,16 @@
+import { devLog, devWarn } from "../../shared/dev-log";
 import type { HikrFeature } from "../feature-types";
 
 interface GalleryImage {
   src: string;
   thumb: string;
   originalHref: string;
+  srcSource: "anchor" | "derived";
   title: string;
 }
 
 const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+const SPINNER_DELAY_MS = 120;
 
 // Render free text into `container`, turning any contained URLs into clickable links.
 function appendLinkified(container: HTMLElement, text: string): void {
@@ -34,14 +37,37 @@ function appendLinkified(container: HTMLElement, text: string): void {
   if (lastIndex < text.length) container.append(document.createTextNode(text.slice(lastIndex)));
 }
 
+function isLikelyImageUrl(value: string): boolean {
+  try {
+    return /\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i.test(new URL(value, location.href).pathname);
+  } catch {
+    return false;
+  }
+}
+
+function deriveLargeImageSrc(image: HTMLImageElement, link: HTMLAnchorElement): Pick<GalleryImage, "src" | "srcSource"> {
+  if (isLikelyImageUrl(link.href)) return { src: link.href, srcSource: "anchor" };
+  const thumb = image.currentSrc || image.src;
+  return {
+    src: thumb.replace(/s(\.[a-z]+)$/i, "$1").replace("s.", "."),
+    srcSource: "derived"
+  };
+}
+
 export const galleryLightboxFeature: HikrFeature = {
   id: "galleryLightbox",
   title: "Gallery Lightbox",
   defaultEnabled: true,
   matchesPage: (context) => context.hasGallery,
-  run({ root }) {
+  run({ root, settings }) {
     if (root.querySelector(".hikr-ext-lightbox")) return;
     const images: GalleryImage[] = [];
+    const preloadCount = Math.max(0, Math.min(10, Math.round(settings.ui.galleryPreloadCount ?? 3)));
+    // Cache of fully-downloaded <img> ELEMENTS keyed by src. We display the cached
+    // element itself instead of re-assigning a shared img's src, so a preloaded
+    // image paints from its in-memory decoded bitmap with no second request — this
+    // works even when hikr.org serves the photos without a reusable HTTP cache.
+    const imgCache = new Map<string, HTMLImageElement>();
     const lightbox = document.createElement("div");
     lightbox.className = "hikr-ext-lightbox";
     lightbox.innerHTML = `
@@ -55,7 +81,6 @@ export const galleryLightboxFeature: HikrFeature = {
           <button class="hikr-ext-lightbox-nav" type="button" data-gallery-prev title="Vorheriges Bild">&#8249;</button>
           <div class="hikr-ext-lightbox-img-wrap">
             <div class="hikr-ext-lightbox-spinner" hidden></div>
-            <img alt="" />
           </div>
           <button class="hikr-ext-lightbox-nav" type="button" data-gallery-next title="Nächstes Bild">&#8250;</button>
         </div>
@@ -66,17 +91,86 @@ export const galleryLightboxFeature: HikrFeature = {
     root.append(lightbox);
     const title = lightbox.querySelector<HTMLElement>(".hikr-ext-lightbox-title")!;
     const footer = lightbox.querySelector<HTMLElement>(".hikr-ext-lightbox-footer")!;
-    const target = lightbox.querySelector("img")!;
     const spinner = lightbox.querySelector<HTMLElement>(".hikr-ext-lightbox-spinner")!;
     const photoLink = lightbox.querySelector<HTMLAnchorElement>(".hikr-ext-lightbox-photolink")!;
     const thumbsBar = lightbox.querySelector<HTMLElement>(".hikr-ext-lightbox-thumbs")!;
     const imgWrap = lightbox.querySelector<HTMLElement>(".hikr-ext-lightbox-img-wrap")!;
 
     let currentIndex = 0;
-    const showImage = () => {
+    let currentEl: HTMLImageElement | undefined;
+    let displayRun = 0;
+    let spinnerTimer = 0;
+    const clearSpinnerTimer = () => {
+      window.clearTimeout(spinnerTimer);
+      spinnerTimer = 0;
+    };
+    const scheduleSpinner = (reason: string) => {
+      clearSpinnerTimer();
       spinner.hidden = true;
-      target.style.visibility = "visible";
+      spinnerTimer = window.setTimeout(() => {
+        spinner.hidden = false;
+        devLog("gallery", "spinner shown", { index: currentIndex, reason });
+      }, SPINNER_DELAY_MS);
+    };
+
+    // Get (or create) the cached, self-loading <img> for a source. Creating it kicks
+    // off the download and pre-decode immediately; the element is retained in the
+    // cache so its decoded bitmap survives until evicted and can be shown instantly.
+    const imgFor = (src: string): HTMLImageElement => {
+      const existing = imgCache.get(src);
+      if (existing) return existing;
+      const el = new Image();
+      el.alt = "";
+      el.decoding = "async";
+      el.src = src;
+      if (typeof el.decode === "function") el.decode().catch(() => undefined);
+      imgCache.set(src, el);
+      return el;
+    };
+
+    // Keep only a small window of decoded full-res images around the current one so
+    // memory stays bounded on large galleries.
+    const trimCache = () => {
+      if (images.length === 0) return;
+      const keep = new Set<string>();
+      const span = Math.max(preloadCount, 2);
+      for (let off = -2; off <= span; off++) {
+        const i = ((currentIndex + off) % images.length + images.length) % images.length;
+        if (images[i]?.src) keep.add(images[i].src);
+      }
+      for (const [src, el] of [...imgCache]) {
+        if (keep.has(src) || el === currentEl) continue;
+        if (el.parentElement) el.remove();
+        el.removeAttribute("src");
+        imgCache.delete(src);
+      }
+    };
+
+    const preloadAhead = (reason: string) => {
+      if (preloadCount < 1 || images.length < 2) return;
+      for (let offset = 1; offset <= Math.min(preloadCount, images.length - 1); offset++) {
+        const image = images[(currentIndex + offset) % images.length];
+        if (image?.src) imgFor(image.src);
+      }
+      devLog("gallery", "preload ahead", { reason, index: currentIndex, cached: imgCache.size });
+      trimCache();
+    };
+
+    // Swap the given (loaded) element in as the visible photo.
+    const display = (el: HTMLImageElement) => {
+      clearSpinnerTimer();
+      spinner.hidden = true;
+      if (currentEl && currentEl !== el && currentEl.parentElement === imgWrap) currentEl.remove();
+      if (el.parentElement !== imgWrap) imgWrap.appendChild(el);
+      currentEl = el;
+      el.style.visibility = "visible";
       imgWrap.style.minHeight = "";
+      devLog("gallery", "display ready", {
+        index: currentIndex,
+        src: el.currentSrc || el.src,
+        naturalWidth: el.naturalWidth,
+        naturalHeight: el.naturalHeight
+      });
     };
 
     // A short thumbnail strip centred on the current image, so the user can jump
@@ -103,29 +197,50 @@ export const galleryLightboxFeature: HikrFeature = {
     const openAt = (index: number) => {
       if (images.length === 0) return;
       currentIndex = (index + images.length) % images.length;
+      const runId = ++displayRun;
       const image = images[currentIndex];
+      const el = imgFor(image.src);
 
-      // Slow-network UX: hide the previous image and show a spinner until the new
-      // one has loaded. Reserve the previous image's rendered height on the wrapper
-      // so the title and thumbnail bar don't collapse inward during the load gap.
-      const prevHeight = target.offsetHeight;
+      // Reserve the previous photo's height so the title/thumbs don't jump while a
+      // not-yet-ready image loads.
+      const prevHeight = currentEl?.offsetHeight ?? 0;
       if (prevHeight > 1) imgWrap.style.minHeight = `${prevHeight}px`;
-      spinner.hidden = false;
-      target.style.visibility = "hidden";
-      target.onload = showImage;
-      target.onerror = showImage;
-      target.src = image.src;
-      if (target.complete && target.naturalWidth > 0) showImage();
+
+      devLog("gallery", "open", {
+        index: currentIndex,
+        src: image.src,
+        source: image.srcSource,
+        complete: el.complete,
+        naturalWidth: el.naturalWidth
+      });
+
+      if (el.complete && el.naturalWidth > 0) {
+        // Preloaded (or already seen) → paints instantly from memory, no spinner.
+        display(el);
+      } else {
+        // Not ready yet: keep the previous photo visible and only overlay a spinner
+        // if it stays slow. Because `el` IS the element we will show, it needs no
+        // second request once it finishes loading.
+        scheduleSpinner("loading");
+        el.addEventListener("load", () => { if (runId === displayRun) display(el); }, { once: true });
+        el.addEventListener("error", () => {
+          if (runId !== displayRun) return;
+          devWarn("gallery", "display image failed", { index: currentIndex, src: image.src });
+          display(el);
+        }, { once: true });
+      }
 
       appendLinkified(title, image.title || image.originalHref);
       photoLink.href = image.originalHref;
       footer.textContent = `${currentIndex + 1} / ${images.length} - Pfeiltasten/Thumbnails zum Wechseln, Esc zum Schließen, Ctrl+Click öffnet die klassische Ansicht`;
       renderThumbs();
+      preloadAhead("open");
       lightbox.dataset.open = "true";
     };
     const close = () => {
+      displayRun++;
+      clearSpinnerTimer();
       lightbox.dataset.open = "false";
-      target.removeAttribute("src");
     };
     const next = () => openAt(currentIndex + 1);
     const previous = () => openAt(currentIndex - 1);
@@ -148,14 +263,22 @@ export const galleryLightboxFeature: HikrFeature = {
       if (!link) return;
       const originalHref = link.href;
       const thumb = image.src;
-      const large = image.src.replace(/s(\.[a-z]+)$/i, "$1").replace("s.", ".");
+      const large = deriveLargeImageSrc(image, link);
       images.push({
-        src: large,
+        src: large.src,
         thumb,
         originalHref,
+        srcSource: large.srcSource,
         title: image.title || image.alt || link.title || ""
       });
-      link.href = large;
+      devLog("gallery", "image indexed", {
+        index,
+        src: large.src,
+        source: large.srcSource,
+        thumb,
+        originalHref
+      });
+      link.href = large.src;
       link.addEventListener("click", (event) => {
         if (event.ctrlKey) {
           location.href = originalHref;
@@ -165,5 +288,6 @@ export const galleryLightboxFeature: HikrFeature = {
         openAt(index);
       });
     });
+    devLog("gallery", "initialized", { images: images.length, preloadCount });
   }
 };

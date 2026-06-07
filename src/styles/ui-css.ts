@@ -197,6 +197,17 @@ button, input, select { font: inherit; }
   font-weight: 650;
 }
 .field { display: grid; gap: 6px; margin: 14px 0; }
+.field.hikr-ext-option-subfield {
+  margin: 0 0 10px 46px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.field.is-disabled {
+  opacity: 0.5;
+}
+.field.is-disabled input {
+  cursor: not-allowed;
+}
 .field label, .toggle label {
   font-size: 13px;
   font-weight: 550;
