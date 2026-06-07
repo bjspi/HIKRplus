@@ -200,20 +200,38 @@ function readGeodataCount(footer: HTMLElement | undefined): number | undefined {
   return match ? Number(match[1]) : 0;
 }
 
-export function collectListingMetadata(root: ParentNode = document): ListingMetadata[] {
-  return [...root.querySelectorAll<HTMLElement>(".content-list")].map((card) => {
+// The expensive, immutable-per-card parts of the metadata: badge parsing, the
+// footer sibling-walk and the geodata-text read. These never change for a given
+// card once HIKR has rendered it, so they are cached and reused across the many
+// applyListingFilter() calls a single slider drag fires. driveDuration is the one
+// dynamic field (the routing pipeline writes it asynchronously after the fact), so
+// it is deliberately read live below rather than cached.
+type CachedListingMetadata = Omit<ListingMetadata, "card" | "driveDuration">;
+const metadataCache = new WeakMap<HTMLElement, CachedListingMetadata>();
+
+function listingMetadataFor(card: HTMLElement): CachedListingMetadata {
+  let cached = metadataCache.get(card);
+  if (!cached) {
     const footer = findAuthorFooter(card);
     const { hikeGrade, climbGrade } = readGrades(card);
-    return {
-      card,
+    cached = {
       footer,
       group: footer ? [card, footer] : [card],
       hikeGrade,
       climbGrade,
-      driveDuration: Number(card.dataset.hikrDriveDuration),
       geodataCount: readGeodataCount(footer)
     };
-  });
+    metadataCache.set(card, cached);
+  }
+  return cached;
+}
+
+export function collectListingMetadata(root: ParentNode = document): ListingMetadata[] {
+  return [...root.querySelectorAll<HTMLElement>(".content-list")].map((card) => ({
+    card,
+    ...listingMetadataFor(card),
+    driveDuration: Number(card.dataset.hikrDriveDuration)
+  }));
 }
 
 function minValue(steps: GradeStep[], index: number): number {

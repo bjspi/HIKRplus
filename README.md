@@ -4,7 +4,7 @@
 
 # HikrPlus
 
-**Extended features for [hikr.org](https://www.hikr.org) — tour search, snow research, driving times, and more.**
+**Extended features for [hikr.org](https://www.hikr.org) — tour search, listing filters, snow research, driving times, and more.**
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-34A853)](https://developer.chrome.com/docs/extensions/mv3/intro/)
@@ -17,7 +17,7 @@
 
 [hikr.org](https://www.hikr.org) has one of the most detailed collections of Alpine tour reports on the web — real accounts from real hikers, with photos, peak annotations, snow observations, and exact starting coordinates. A genuinely useful resource for anyone planning trips in the Alps.
 
-HikrPlus is a browser extension that adds research tools on top: inline tour stats, driving time estimates, an interactive start-point map, snow conditions analysis, hover previews, and one-click Excel exports. Everything runs locally in your browser with smart caching.
+HikrPlus is a browser extension that adds research tools on top: inline tour stats, listing filters, driving time estimates, an interactive start-point map, snow conditions analysis, hover previews, and one-click Excel exports. Everything runs locally in your browser with smart caching.
 
 <br />
 
@@ -101,6 +101,13 @@ Supports two routing backends:
 | **Google Routes API** | Requires a Google Cloud key. |
 
 Routes are cached for 7 days. Unroutable locations are negative-cached to avoid burning API quota.
+
+---
+
+### 🎚️ Listing Filters
+Filter the visible HIKR tour listings directly from the side panel by hiking difficulty, climbing difficulty, geodata availability, and calculated driving time. The filter runs as a post-processing step on the listing HTML: original HIKR badges are used for difficulty, the tour footer is used for `Geodaten:N`, and driving-time filters become active once HikrPlus has calculated route durations.
+
+Entries with missing values stay visible by default, with optional checkboxes to hide listings without hiking grade, climbing grade, or driving time. Filters can be temporary for the current page load or saved so the panel opens and reapplies them automatically.
 
 ---
 
@@ -211,8 +218,8 @@ Every HIKR page with tours gets a persistent side panel:
 │                                  │
 │ ☑  Calculate routes automatically │
 │                                  │
-│ [Details] [Routes] [Map] [Excel] │
-│         [Options ⚙]              │
+│ [Details] [Routes] [Filter] [Map] │
+│ [Excel]   [Options ⚙]            │
 └──────────────────────────────────┘
 ```
 
