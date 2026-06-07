@@ -84,6 +84,7 @@ export interface ExtensionSettings {
     externalMapZoom: number;
     externalMapCustomTemplate?: string;
     hoverPreviewDelay: number;
+    galleryPreloadCount: number;
     snowHighestPeakOnly: boolean;
   };
   dev: {

@@ -112,6 +112,18 @@ function formatDelay(ms: number): string {
   return `${(ms / 1000).toFixed(2).replace(/\.?0+$/, "")} s`;
 }
 
+function formatCount(value: number): string {
+  return String(Math.max(0, Math.min(10, Math.round(value))));
+}
+
+function syncGalleryPreloadAvailability(enabled: boolean): void {
+  const field = document.querySelector<HTMLElement>("[data-gallery-preload-field]");
+  const input = document.getElementById("galleryPreloadCount") as HTMLInputElement | null;
+  field?.classList.toggle("is-disabled", !enabled);
+  field?.setAttribute("aria-disabled", String(!enabled));
+  if (input) input.disabled = !enabled;
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} kB`;
@@ -178,16 +190,29 @@ function renderAllPanels(settings: ExtensionSettings, activeSection: NavSection)
     (e) => `<option value="${e.value}" ${settings.language === e.value ? "selected" : ""}>${e.label}</option>`
   ).join("");
 
+  const galleryPreloadEnabled = settings.features.galleryLightbox;
+  const galleryPreloadCount = settings.ui.galleryPreloadCount ?? DEFAULT_SETTINGS.ui.galleryPreloadCount;
+  const galleryPreloadField = `
+    <div class="field hikr-ext-option-subfield ${galleryPreloadEnabled ? "" : "is-disabled"}" data-gallery-preload-field aria-disabled="${galleryPreloadEnabled ? "false" : "true"}">
+      <label for="galleryPreloadCount">${esc(t("label_gallery_preload_count"))} — <span id="galleryPreloadCountValue">${formatCount(galleryPreloadCount)}</span></label>
+      <input id="galleryPreloadCount" type="range" min="0" max="10" step="1" value="${galleryPreloadCount}" style="width:100%;accent-color:var(--accent)" ${galleryPreloadEnabled ? "" : "disabled"} />
+      <small>${esc(t("label_gallery_preload_count_hint"))}</small>
+    </div>
+  `;
+
   const featureToggles = (keys: (keyof FeatureSettings)[]) =>
-    keys.map((key) => `
-      <div class="toggle">
-        <input id="feature-${key}" type="checkbox" ${settings.features[key] ? "checked" : ""} />
-        <div>
-          <label for="feature-${key}">${esc(t(`feature_${key}_title`))}</label>
-          <small>${esc(t(`feature_${key}_desc`))}</small>
+    keys.map((key) => {
+      const toggle = `
+        <div class="toggle">
+          <input id="feature-${key}" type="checkbox" ${settings.features[key] ? "checked" : ""} />
+          <div>
+            <label for="feature-${key}">${esc(t(`feature_${key}_title`))}</label>
+            <small>${esc(t(`feature_${key}_desc`))}</small>
+          </div>
         </div>
-      </div>
-    `).join("");
+      `;
+      return key === "galleryLightbox" ? `${toggle}${galleryPreloadField}` : toggle;
+    }).join("");
 
   const autoloadToggles = AUTOLOAD_KEYS.map((key) => `
     <div class="toggle">
@@ -199,7 +224,9 @@ function renderAllPanels(settings: ExtensionSettings, activeSection: NavSection)
   const clusterKm = (settings.cache.locationClusterMeters / 1000).toFixed(1);
 
   const sections: Record<NavSection, string> = {
-    features: featureToggles(FEATURE_KEYS_GENERAL),
+    features: `
+      ${featureToggles(FEATURE_KEYS_GENERAL)}
+    `,
 
     provider: `
       <div class="field">
@@ -457,6 +484,7 @@ function readSettings(current: ExtensionSettings): ExtensionSettings {
       externalMapZoom: Number(inputValue("externalMapZoom")) || 15,
       externalMapCustomTemplate: inputValue("externalMapCustom").trim() || undefined,
       hoverPreviewDelay: Number(inputValue("hoverDelay")) || 0,
+      galleryPreloadCount: Math.max(0, Math.min(10, Math.round(Number(inputValue("galleryPreloadCount")) || 0))),
       snowHighestPeakOnly: checked("snowHighestPeakOnly")
     },
     dev: {
@@ -605,6 +633,9 @@ async function boot() {
       void autosave(true);
       return;
     }
+    if (target.id === "feature-galleryLightbox") {
+      syncGalleryPreloadAvailability((target as HTMLInputElement).checked);
+    }
     if (target.matches("input, select")) void autosave(false);
   });
 
@@ -615,6 +646,13 @@ async function boot() {
     if (target.id === "hoverDelay") {
       const display = document.getElementById("hoverDelayValue");
       if (display) display.textContent = formatDelay(Number((target as HTMLInputElement).value));
+      window.clearTimeout(autosaveTimer);
+      autosaveTimer = window.setTimeout(() => void autosave(false), 300);
+      return;
+    }
+    if (target.id === "galleryPreloadCount") {
+      const display = document.getElementById("galleryPreloadCountValue");
+      if (display) display.textContent = formatCount(Number((target as HTMLInputElement).value));
       window.clearTimeout(autosaveTimer);
       autosaveTimer = window.setTimeout(() => void autosave(false), 300);
       return;

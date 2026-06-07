@@ -53,6 +53,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
     externalMapProvider: "nakarte",
     externalMapZoom: 15,
     hoverPreviewDelay: 750,
+    galleryPreloadCount: 3,
     snowHighestPeakOnly: true
   },
   dev: {
