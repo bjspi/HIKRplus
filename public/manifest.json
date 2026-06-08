@@ -48,6 +48,7 @@
       "resources": [
         "icons/hikr-logo.png",
         "icons/hikr-logo-wide.png",
+        "icons/hikr-icon-48.png",
         "inject/minimap-bridge.js",
         "inject/gallery-bridge.js"
       ],
