@@ -1,4 +1,5 @@
 import { sendMessage } from "../../shared/messages";
+import { fuelCostText, type FuelConfig } from "../../shared/fuel-cost";
 import type { Coordinates, RouteCacheRecord, RouteProviderId } from "../../shared/types";
 import { parseCoordinateInput } from "../../shared/coordinates";
 import { t } from "../../shared/i18n";
@@ -71,6 +72,35 @@ function syncRouteAutoStatus(): void {
 
 function esc(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch] ?? ch));
+}
+
+function fuelConfigFromProvider(provider: { fuelPricePerLitre: number; fuelConsumptionLPer100km: number }): FuelConfig {
+  return {
+    pricePerLitre: provider.fuelPricePerLitre,
+    consumptionLPer100km: provider.fuelConsumptionLPer100km
+  };
+}
+
+function fuelCostHtml(distanceMeters: number, cfg: FuelConfig): string {
+  const text = fuelCostText(distanceMeters, cfg);
+  if (!text) return "";
+  const [one = "", two = ""] = text.split(" ⇄ ");
+  return `<span class="hikr-ext-fuel-cost" title="${esc(t("fuel_cost_title", { one, two }))}"><span>${esc(one)}</span> <span aria-hidden="true">⇄</span> <span>${esc(two)}</span></span>`;
+}
+
+function ficheRouteRowsHtml(route: RouteCacheRecord, mapsLink: string, fuel: FuelConfig, firstRowAttrs = ""): string {
+  const fuelHtml = fuelCostHtml(route.distanceMeters, fuel);
+  const fuelRow = fuelHtml ? `
+    <tr class="hikr-ext-fiche-route-row">
+      <td class="fiche_rando_b">${esc(t("label_fuel_cost_row"))}</td><td class="fiche_rando">${fuelHtml}</td>
+    </tr>` : "";
+  return `
+    <tr class="hikr-ext-fiche-route-row"${firstRowAttrs}>
+      <td class="fiche_rando_b">Fahrtstrecke:</td><td class="fiche_rando">🚗 ${esc(route.distanceText)}${mapsLink}</td>
+    </tr>
+    <tr class="hikr-ext-fiche-route-row">
+      <td class="fiche_rando_b">Fahrtdauer:</td><td class="fiche_rando">⌚ ${esc(route.durationText)}</td>
+    </tr>${fuelRow}`;
 }
 
 let suggestTimer: number | undefined;
@@ -206,11 +236,13 @@ function gMapsRouteLink(start: Coordinates, target: Coordinates): string {
   return `<a class="hikr-ext-gmaps-link hikr-ext-external-map-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="Route in Google Maps öffnen"><span aria-hidden="true">↗</span></a>`;
 }
 
-function routeResultHtml(route: RouteCacheRecord, provider: string, startCell: string, start?: Coordinates, target?: Coordinates): string {
+function routeResultHtml(route: RouteCacheRecord, provider: string, startCell: string, fuel: FuelConfig, start?: Coordinates, target?: Coordinates): string {
   const mapsLink = start && target ? ` ${gMapsRouteLink(start, target)}` : "";
+  const fuelHtml = fuelCostHtml(route.distanceMeters, fuel);
+  const fuelSuffix = fuelHtml ? ` <span class="hikr-ext-route-sep" aria-hidden="true">·</span> ${fuelHtml}` : "";
   return [
     `<div class="hikr-ext-route-result" data-route-provider="${esc(provider)}" data-route-start-cell="${esc(startCell)}" title="Fahrtzeit">`,
-    `<span class="hikr-ext-route-pill" title="Distanz / Fahrzeit"><span class="hikr-ext-route-icon" aria-hidden="true">🚗</span>${esc(route.distanceText)} <span class="hikr-ext-route-time">(${esc(route.durationText)})</span></span>${mapsLink}`,
+    `<span class="hikr-ext-route-pill" title="Distanz / Fahrzeit"><span class="hikr-ext-route-icon" aria-hidden="true">🚗</span>${esc(route.distanceText)} <span class="hikr-ext-route-time">(${esc(route.durationText)})</span>${fuelSuffix}</span>${mapsLink}`,
     `</div>`
   ].join("");
 }
@@ -270,9 +302,9 @@ function markRouteUnavailable(detail: HTMLElement): void {
   pending.innerHTML = `<span class="hikr-ext-route-pill"><span class="hikr-ext-route-icon" aria-hidden="true">🚗</span>–</span>`;
 }
 
-function insertRouteResult(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, start?: Coordinates, target?: Coordinates): void {
+function insertRouteResult(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, fuel: FuelConfig, start?: Coordinates, target?: Coordinates): void {
   const wrapper = document.createElement("div");
-  wrapper.innerHTML = routeResultHtml(route, provider, startCell, start, target);
+  wrapper.innerHTML = routeResultHtml(route, provider, startCell, fuel, start, target);
   const routeElement = wrapper.firstElementChild;
   if (!(routeElement instanceof HTMLElement)) return;
   // Replace any pending/stale pill with the freshly computed one.
@@ -281,7 +313,7 @@ function insertRouteResult(detail: HTMLElement, route: RouteCacheRecord, provide
   writeDriveSortData(detail.closest<HTMLElement>(".content-list"), route);
 }
 
-function insertRouteIntoFicheTable(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, start?: Coordinates, target?: Coordinates): void {
+function insertRouteIntoFicheTable(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, fuel: FuelConfig, start?: Coordinates, target?: Coordinates): void {
   const tbody = document.querySelector<HTMLTableSectionElement>("table.fiche_rando tbody");
   if (!tbody) return;
   const detailUrl = detail.dataset.tourUrl ?? "";
@@ -290,16 +322,15 @@ function insertRouteIntoFicheTable(detail: HTMLElement, route: RouteCacheRecord,
   } catch { return; }
   const mapsLink = start && target ? ` ${gMapsRouteLink(start, target)}` : "";
   for (const el of [...tbody.querySelectorAll(".hikr-ext-fiche-route-row")]) el.remove();
-  tbody.insertAdjacentHTML("beforeend", `
-    <tr class="hikr-ext-fiche-route-row" data-route-provider="${esc(provider)}" data-route-start-cell="${esc(startCell)}">
-      <td class="fiche_rando_b">Fahrtstrecke:</td><td class="fiche_rando">🚗 ${esc(route.distanceText)}${mapsLink}</td>
-    </tr>
-    <tr class="hikr-ext-fiche-route-row">
-      <td class="fiche_rando_b">Fahrtdauer:</td><td class="fiche_rando">⌚ ${esc(route.durationText)}</td>
-    </tr>`);
+  tbody.insertAdjacentHTML("beforeend", ficheRouteRowsHtml(
+    route,
+    mapsLink,
+    fuel,
+    ` data-route-provider="${esc(provider)}" data-route-start-cell="${esc(startCell)}"`
+  ));
 }
 
-function insertRouteIntoListCell(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, start?: Coordinates, target?: Coordinates): void {
+function insertRouteIntoListCell(detail: HTMLElement, route: RouteCacheRecord, provider: string, startCell: string, fuel: FuelConfig, start?: Coordinates, target?: Coordinates): void {
   const thumbTd = detail.closest("td");
   const textTd = thumbTd?.nextElementSibling;
   if (!(textTd instanceof HTMLElement)) return;
@@ -307,11 +338,13 @@ function insertRouteIntoListCell(detail: HTMLElement, route: RouteCacheRecord, p
   const firstLink = textTd.querySelector<HTMLAnchorElement>("a[href]");
   if (!firstLink) return;
   const mapsLink = start && target ? ` ${gMapsRouteLink(start, target)}` : "";
+  const fuelHtml = fuelCostHtml(route.distanceMeters, fuel);
+  const fuelSuffix = fuelHtml ? ` <span class="hikr-ext-route-sep" aria-hidden="true">·</span> ${fuelHtml}` : "";
   const div = document.createElement("div");
   div.className = "hikr-ext-list-route";
   div.dataset.routeProvider = provider;
   div.dataset.routeStartCell = startCell;
-  div.innerHTML = `<span class="hikr-ext-route-pill"><span class="hikr-ext-route-icon" aria-hidden="true">🚗</span>${esc(route.distanceText)} <span class="hikr-ext-route-time">(${esc(route.durationText)})</span></span>${mapsLink}`;
+  div.innerHTML = `<span class="hikr-ext-route-pill"><span class="hikr-ext-route-icon" aria-hidden="true">🚗</span>${esc(route.distanceText)} <span class="hikr-ext-route-time">(${esc(route.durationText)})</span>${fuelSuffix}</span>${mapsLink}`;
   firstLink.insertAdjacentElement("afterend", div);
 }
 
@@ -335,6 +368,7 @@ async function insertFicheTableRouteForTourPage(
   const waypoint = await loadWaypoint(normalizeHikrUrl(firstWpAnchor.href));
   if (!waypoint?.coordinates) return;
 
+  const fuel = fuelConfigFromProvider(context.settings.provider);
   const target = waypoint.coordinates;
   const targetKey = `${target.lat.toFixed(5)},${target.lng.toFixed(5)}`;
   devLog("route", "fiche table route", { targetKey, target, start, startCell });
@@ -354,13 +388,12 @@ async function insertFicheTableRouteForTourPage(
     routes.push(response.route);
     const mapsLink = gMapsRouteLink(start, target);
     for (const el of [...tbody.querySelectorAll(".hikr-ext-fiche-route-row")]) el.remove();
-    tbody.insertAdjacentHTML("beforeend", `
-      <tr class="hikr-ext-fiche-route-row" data-route-start-cell="${esc(startCell)}">
-        <td class="fiche_rando_b">Fahrtstrecke:</td><td class="fiche_rando">🚗 ${esc(response.route.distanceText)} ${mapsLink}</td>
-      </tr>
-      <tr class="hikr-ext-fiche-route-row">
-        <td class="fiche_rando_b">Fahrtdauer:</td><td class="fiche_rando">⌚ ${esc(response.route.durationText)}</td>
-      </tr>`);
+    tbody.insertAdjacentHTML("beforeend", ficheRouteRowsHtml(
+      response.route,
+      ` ${mapsLink}`,
+      fuel,
+      ` data-route-start-cell="${esc(startCell)}"`
+    ));
     devLog("route", "fiche table route inserted", { distance: response.route.distanceText, duration: response.route.durationText });
   } catch (error) {
     devWarn("route", "fiche table route failed", { targetKey, error });
@@ -372,6 +405,7 @@ interface RouteCtx {
   apiKey: string;
   provider: RouteProviderId;
   startCell: string;
+  fuel: FuelConfig;
 }
 
 // Resolved once per activation (geocoding the start can be expensive) and cached —
@@ -397,7 +431,13 @@ function resolveRouteContext(context: Parameters<HikrFeature["run"]>[0]): Promis
         devWarn("route", "no route context", { hasStart: Boolean(start), hasApiKey: Boolean(apiKey) });
         return null;
       }
-      return { start, apiKey, provider: context.settings.provider.routeProvider, startCell: routeStartCell({ start }) };
+      return {
+        start,
+        apiKey,
+        provider: context.settings.provider.routeProvider,
+        startCell: routeStartCell({ start }),
+        fuel: fuelConfigFromProvider(context.settings.provider)
+      };
     })();
   }
   return routeContextPromise;
@@ -444,9 +484,9 @@ async function routeOneDetail(detail: HTMLElement, target: Coordinates, ctx: Rou
     markRouteUnavailable(detail);
     return;
   }
-  insertRouteResult(detail, route, ctx.provider, ctx.startCell, ctx.start, target);
-  insertRouteIntoFicheTable(detail, route, ctx.provider, ctx.startCell, ctx.start, target);
-  insertRouteIntoListCell(detail, route, ctx.provider, ctx.startCell, ctx.start, target);
+  insertRouteResult(detail, route, ctx.provider, ctx.startCell, ctx.fuel, ctx.start, target);
+  insertRouteIntoFicheTable(detail, route, ctx.provider, ctx.startCell, ctx.fuel, ctx.start, target);
+  insertRouteIntoListCell(detail, route, ctx.provider, ctx.startCell, ctx.fuel, ctx.start, target);
 }
 
 let autoRoutingListenerAdded = false;
