@@ -63,6 +63,8 @@ export interface ExtensionSettings {
     mapProvider: MapProviderId;
     apiKeys: Partial<Record<RouteProviderId | MapProviderId, string>>;
     orsRateLimitPerMinute: number;
+    fuelPricePerLitre: number;
+    fuelConsumptionLPer100km: number;
   };
   cache: {
     routeTtlDays: number;

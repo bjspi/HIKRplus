@@ -33,7 +33,9 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
     routeProvider: "ors",
     mapProvider: "osm",
     apiKeys: {},
-    orsRateLimitPerMinute: 40
+    orsRateLimitPerMinute: 40,
+    fuelPricePerLitre: 0,
+    fuelConsumptionLPer100km: 0
   },
   cache: {
     routeTtlDays: 7,
@@ -75,6 +77,7 @@ function mergeSettings(value?: Partial<ExtensionSettings>): ExtensionSettings {
     ...value,
     features: { ...DEFAULT_SETTINGS.features, ...value?.features },
     provider: {
+      // Provider-level fuel settings piggyback on this spread; no extra merge branch is needed.
       ...DEFAULT_SETTINGS.provider,
       ...value?.provider,
       apiKeys: { ...DEFAULT_SETTINGS.provider.apiKeys, ...value?.provider?.apiKeys }
@@ -118,6 +121,7 @@ export async function patchSettings(patch: Partial<ExtensionSettings>): Promise<
     ...patch,
     features: { ...current.features, ...patch.features },
     provider: {
+      // Provider-level fuel settings patch through this existing spread as-is.
       ...current.provider,
       ...patch.provider,
       apiKeys: { ...current.provider.apiKeys, ...patch.provider?.apiKeys }

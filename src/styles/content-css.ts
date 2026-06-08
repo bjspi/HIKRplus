@@ -837,6 +837,15 @@ li[id^="item_"] span.hikr-ext-tour-inline .hikr-ext-stats {
   color: var(--hikr-muted);
   font-size: 0.93em;
 }
+.hikr-ext-route-sep {
+  color: var(--hikr-muted);
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+.hikr-ext-fuel-cost {
+  color: var(--hikr-muted);
+  font-size: 0.93em;
+}
 .hikr-ext-route-pending,
 .hikr-ext-route-unavailable {
   color: var(--hikr-muted);

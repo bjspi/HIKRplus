@@ -1,4 +1,5 @@
 import { sendMessage } from "../shared/messages";
+import { parseFuelInput } from "../shared/fuel-cost";
 import { DEFAULT_SETTINGS } from "../shared/settings";
 import { type SortDir, buildSortGridHtml } from "../shared/sort";
 import { LOCALES, detectLocaleFromBrowser, setLocale, t, type Locale } from "../shared/i18n";
@@ -114,6 +115,10 @@ function formatDelay(ms: number): string {
 
 function formatCount(value: number): string {
   return String(Math.max(0, Math.min(10, Math.round(value))));
+}
+
+function formatFuelSetting(value: number): string {
+  return value > 0 ? String(value).replace(".", ",") : "";
 }
 
 function syncGalleryPreloadAvailability(enabled: boolean): void {
@@ -258,6 +263,15 @@ function renderAllPanels(settings: ExtensionSettings, activeSection: NavSection)
         <div class="actions">
           <button class="btn secondary" id="verifyMapy" type="button">${esc(t("label_verify_mapy"))}</button>
         </div>
+      </div>
+      <div class="field">
+        <label for="fuelPricePerLitre">${esc(t("label_fuel_price"))}</label>
+        <input id="fuelPricePerLitre" type="text" inputmode="decimal" placeholder="${esc(t("fuel_price_ph"))}" value="${esc(formatFuelSetting(settings.provider.fuelPricePerLitre))}" />
+      </div>
+      <div class="field">
+        <label for="fuelConsumptionLPer100km">${esc(t("label_fuel_consumption"))}</label>
+        <input id="fuelConsumptionLPer100km" type="text" inputmode="decimal" placeholder="${esc(t("fuel_consumption_ph"))}" value="${esc(formatFuelSetting(settings.provider.fuelConsumptionLPer100km))}" />
+        <small>${esc(t("fuel_reactivity_hint"))}</small>
       </div>
     `,
 
@@ -449,6 +463,8 @@ function readSettings(current: ExtensionSettings): ExtensionSettings {
   const autoload = { ...current.tourDetailsAutoload };
   for (const key of AUTOLOAD_KEYS) autoload[key] = checked(`autoload-${key}`);
   const fallback = inputValue("fallbackStart").split(",").map(Number);
+  const fuelPricePerLitre = parseFuelInput(inputValue("fuelPricePerLitre"));
+  const fuelConsumptionLPer100km = parseFuelInput(inputValue("fuelConsumptionLPer100km"));
   return {
     ...current,
     language: inputValue("language") as Locale,
@@ -458,6 +474,8 @@ function readSettings(current: ExtensionSettings): ExtensionSettings {
       ...current.provider,
       routeProvider: inputValue("routeProvider") as RouteProviderId,
       mapProvider: inputValue("mapProvider") as MapProviderId,
+      fuelPricePerLitre: Number.isFinite(fuelPricePerLitre) && fuelPricePerLitre > 0 ? fuelPricePerLitre : 0,
+      fuelConsumptionLPer100km: Number.isFinite(fuelConsumptionLPer100km) && fuelConsumptionLPer100km > 0 ? fuelConsumptionLPer100km : 0,
       apiKeys: {
         ors: inputValue("orsKey") || undefined,
         google: inputValue("googleKey") || undefined,
