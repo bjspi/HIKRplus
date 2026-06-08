@@ -118,6 +118,27 @@ describe("listing filter DOM helpers", () => {
     expect(unknown.classList.contains("hikr-ext-listing-filter-fade")).toBe(false);
   });
 
+  it("ignores .content-list cards inside the right sidebar (.menu_right / #menu_rs_swiss)", () => {
+    const mainCard = addListing("Main", badge("T2", "Wandern Schwierigkeit"), "(Fotos:7 | Geodaten:1)");
+
+    // The "In der Nähe" sidebar reuses the .content-list class inside
+    // #menu_rs_swiss / .menu_right — the filter must never touch it.
+    const sidebar = document.createElement("div");
+    sidebar.id = "menu_rs_swiss";
+    sidebar.innerHTML = `<div class="menu_right"><div class="content-list"><strong>Nearby</strong></div></div>`;
+    document.body.append(sidebar);
+    const sidebarCard = sidebar.querySelector<HTMLElement>(".content-list")!;
+
+    // Collection (and therefore the visible/total count) sees only the main card.
+    expect(collectListingMetadata()).toHaveLength(1);
+
+    const stats = applyListingFilter({ ...DEFAULT_LISTING_FILTER_STATE, hideMissingHike: true });
+    expect(stats.total).toBe(1);
+    expect(mainCard.classList.contains("hikr-ext-listing-filter-fade")).toBe(false);
+    // The sidebar card carries no filter classes at all.
+    expect(sidebarCard.className).toBe("content-list");
+  });
+
   it("can hide listings without hiking difficulty explicitly", () => {
     const withHike = addListing("A", badge("T2", "Wandern Schwierigkeit"), "(Fotos:7 | Geodaten:1)");
     const withoutHike = addListing("B", badge("II", "Klettern Schwierigkeit"), "(Fotos:7 | Geodaten:1)");
