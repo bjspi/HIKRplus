@@ -143,6 +143,9 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   top: 72px;
   width: 320px;
   max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 16px);
+  display: flex;
+  flex-direction: column;
   background: var(--hikr-surface);
   border: 1px solid var(--hikr-line);
   box-shadow: 0 8px 24px rgba(42, 36, 34, 0.08);
@@ -165,6 +168,74 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   color: var(--hikr-ink);
   border-bottom: 1px solid var(--hikr-line);
   position: relative;
+  flex: 0 0 auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.hikr-ext-panel.hikr-ext-panel-dragging,
+.hikr-ext-panel.hikr-ext-panel-dragging header {
+  cursor: grabbing;
+}
+.hikr-ext-panel-collapse {
+  margin-left: auto;
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--hikr-ink-soft);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.hikr-ext-panel-collapse:hover {
+  background: var(--hikr-line);
+  color: var(--hikr-ink);
+}
+.hikr-ext-panel-collapse:focus-visible,
+.hikr-ext-panel.hikr-ext-panel-collapsed header:focus-visible {
+  outline: 2px solid var(--hikr-accent);
+  outline-offset: 2px;
+}
+.hikr-ext-panel-icon {
+  display: none;
+  height: 26px;
+  width: 26px;
+  object-fit: contain;
+}
+/* The header images must not swallow pointer events or start a native image drag — the
+   header is the drag handle, so a press on the icon/logo must reach it (otherwise the
+   browser starts an image drag, fires pointercancel, and the collapsed puck expands
+   instead of dragging). */
+.hikr-ext-panel-icon,
+.hikr-ext-panel-logo {
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+/* Collapsed: the panel shrinks to a small draggable puck showing just the square icon. */
+.hikr-ext-panel.hikr-ext-panel-collapsed {
+  width: auto;
+  max-width: none;
+}
+.hikr-ext-panel.hikr-ext-panel-collapsed > main {
+  display: none;
+}
+.hikr-ext-panel.hikr-ext-panel-collapsed header {
+  padding: 7px;
+  border-bottom: none;
+}
+.hikr-ext-panel.hikr-ext-panel-collapsed header::after {
+  display: none;
+}
+.hikr-ext-panel.hikr-ext-panel-collapsed .hikr-ext-panel-logo,
+.hikr-ext-panel.hikr-ext-panel-collapsed .hikr-ext-panel-collapse {
+  display: none;
+}
+.hikr-ext-panel.hikr-ext-panel-collapsed .hikr-ext-panel-icon {
+  display: block;
 }
 .hikr-ext-panel header::after {
   content: "";
@@ -190,6 +261,8 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   padding: 12px 14px;
   display: grid;
   gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
 }
 .hikr-ext-button-row {
   display: grid;
