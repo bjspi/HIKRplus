@@ -4,7 +4,7 @@
 
 # HikrPlus
 
-**Extended features for [hikr.org](https://www.hikr.org) — tour search, listing filters, snow research, driving times, and more.**
+**Extended features for [hikr.org](https://www.hikr.org) — tour search, listing filters, snow research, driving times, fuel costs, and more.**
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
 [![Manifest V3](https://img.shields.io/badge/Manifest-V3-34A853)](https://developer.chrome.com/docs/extensions/mv3/intro/)
@@ -93,6 +93,8 @@ Enter your starting location and the extension calculates **driving distance and
 <div align="center">
 <img src="screenshots/driving-time-on-tour-page.jpg" alt="Driving distance and duration added to a tour's detail table, computed from a real route to the first waypoint" width="720" />
 </div>
+
+**Fuel cost (€).** Enter your fuel price (€/L) and consumption (L/100 km) once in the options and the extension shows an estimated **fuel cost next to every driving distance** — one-way *and* round-trip, with a `⇄` arrow, e.g. `3,4 € ⇄ 6,8 €`. It appears on the tour cards, the short-info list cells, and as a dedicated **Spritkosten** row in the single-tour detail table. The cost only shows once both values are set; amounts are rounded to one decimal.
 
 Supports two routing backends:
 | Provider | Notes |
@@ -207,7 +209,7 @@ Every HIKR page with tours gets a persistent side panel:
 
 ```
 ┌──────────────────────────────────┐
-│ 🏔  HikrPlus                     │
+│ 🏔  HikrPlus                  –  │
 ├──────────────────────────────────┤
 │ Detected: home · 20 tours        │
 │                                  │
@@ -223,6 +225,8 @@ Every HIKR page with tours gets a persistent side panel:
 └──────────────────────────────────┘
 ```
 
+**Move it, collapse it, keep it.** Grab the panel by its header and drag it anywhere — it snaps to the nearest screen edge and stays glued there when you resize the window, so it never strands mid-screen or off-screen. Hit the **–** button to collapse it down to a small draggable icon (📍), and click the icon — or press **Enter** while it's focused — to expand it again, growing back out toward wherever there's room. Your position *and* collapsed/expanded state are remembered across page loads, and an open filter re-opens together with the panel.
+
 ---
 
 ## ⚙️ Options
@@ -230,7 +234,8 @@ Every HIKR page with tours gets a persistent side panel:
 Open the options page via the panel button or the extension icon. Configure:
 
 - **Feature toggles** — enable or disable any feature individually
-- **Route provider** — OpenRouteService or Google Routes, with API keys
+- **Route provider** — OpenRouteService or Google Routes, with API keys (section *Provider / Fahrtberechnungen*)
+- **Fuel cost** — fuel price (€/L) and consumption (L/100 km); set both to show estimated driving costs next to distances (accepts `1,85` or `1.85`)
 - **Map provider** — OpenStreetMap or Mapy.cz
 - **External map links** — open waypoints in nakarte.me, ppete, Google Maps, OpenStreetMap, Mapy.cz, swisstopo, BergFex, OpenTopoMap, or a custom URL template
 - **Autoload per page type** — choose on which page types tour details load automatically
