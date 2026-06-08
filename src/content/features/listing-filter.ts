@@ -226,8 +226,22 @@ function listingMetadataFor(card: HTMLElement): CachedListingMetadata {
   return cached;
 }
 
+// Main-body listing cards only. hikr.org reuses the `.content-list` class for the
+// right-column "In der Nähe" sidebar (wrapped in `.menu_right` / `#menu_rs_swiss`),
+// so a document-wide `.content-list` sweep would wrongly mute/hide those sidebar
+// entries and skew the visible/total count. We exclude by ancestry rather than scope
+// to a positive main container: a missing/renamed positive container would fail
+// *closed* (zero listings), whereas exclusion fails *open* (no sidebar -> unchanged
+// behaviour) and can never hide a real main listing, since `.menu_right` /
+// `#menu_rs_swiss` is by definition the sidebar. Every listing-filter DOM collection
+// routes through here so "main listings only" is a single enforced rule.
+function mainListingCards(root: ParentNode = document): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(".content-list")]
+    .filter((card) => !card.closest(".menu_right, #menu_rs_swiss"));
+}
+
 export function collectListingMetadata(root: ParentNode = document): ListingMetadata[] {
-  return [...root.querySelectorAll<HTMLElement>(".content-list")].map((card) => ({
+  return mainListingCards(root).map((card) => ({
     card,
     ...listingMetadataFor(card),
     driveDuration: Number(card.dataset.hikrDriveDuration)
@@ -238,14 +252,18 @@ function minValue(steps: GradeStep[], index: number): number {
   return steps[Math.max(0, Math.min(index, steps.length - 1))].value;
 }
 
+function hasMainDriveData(): boolean {
+  return mainListingCards().some((card) => card.dataset.hikrDriveDuration !== undefined);
+}
+
 function driveSectionAvailable(context: FeatureContext | undefined): boolean {
   return context?.page.pageType === "searchResults"
     || context?.page.pageType === "waypoint"
-    || Boolean(document.querySelector(".content-list[data-hikr-drive-duration]"));
+    || hasMainDriveData();
 }
 
 function driveFilterAvailable(context: FeatureContext | undefined): boolean {
-  return driveSectionAvailable(context) && Boolean(document.querySelector(".content-list[data-hikr-drive-duration]"));
+  return driveSectionAvailable(context) && hasMainDriveData();
 }
 
 function matchesFilter(
@@ -494,7 +512,7 @@ export function openListingFilterMenu(context: FeatureContext): void {
     existing.remove();
     return;
   }
-  if (!document.querySelector(".content-list")) return;
+  if (mainListingCards().length === 0) return;
 
   root.querySelector<HTMLElement>(".hikr-ext-sort-menu")?.remove();
   installToursAppendedListener(root);

@@ -77,6 +77,11 @@ function collectGroup(card: HTMLElement): Node[] {
 
 export function sortCards(key: string, dir: SortDir): void {
   ensureAllCardGrades();
+  // Main listings only. This document-wide `.content-list` sweep also matches the
+  // right-column "In der Nähe" sidebar (`.menu_right` / `#menu_rs_swiss`), but sort is
+  // only reachable on `searchResults` pages, which have no such sidebar — so it is not
+  // a live bug today. If sort ever runs on pages with `.menu_right`, scope this (and
+  // `ensureAllCardGrades`) the same way listing-filter's `mainListingCards` does.
   const cards = [...document.querySelectorAll<HTMLElement>(".content-list")];
   if (cards.length < 2) return;
   const target = cards[0].parentElement;
