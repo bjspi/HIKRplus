@@ -1,6 +1,7 @@
 import { sendMessage } from "../shared/messages";
 import { parseFuelInput } from "../shared/fuel-cost";
 import { DEFAULT_SETTINGS } from "../shared/settings";
+import { FILTER_OPTIONS, resolveFilterVisibility, resolveFilterSliderRanges, SLIDER_SCALES, type SliderKey } from "../shared/filter-settings";
 import { type SortDir, buildSortGridHtml } from "../shared/sort";
 import { LOCALES, detectLocaleFromBrowser, setLocale, t, type Locale } from "../shared/i18n";
 import type {
@@ -35,11 +36,11 @@ const FEATURE_KEYS_TOURDETAILS: (keyof FeatureSettings)[] = [
 
 const AUTOLOAD_KEYS: TourListPageType[] = ["home", "region", "tourList", "searchResults", "waypoint"];
 
-type NavSection = "features" | "provider" | "saved_locations" | "tourdetails" | "autoload" | "cache_location" | "search" | "sort" | "diagnose";
+type NavSection = "features" | "provider" | "saved_locations" | "tourdetails" | "autoload" | "cache_location" | "search" | "sort" | "filters" | "diagnose";
 
 const NAV_SECTIONS: NavSection[] = [
   "features", "provider", "saved_locations", "tourdetails",
-  "autoload", "cache_location", "search", "sort", "diagnose"
+  "autoload", "cache_location", "search", "sort", "filters", "diagnose"
 ];
 
 interface CacheStatsData {
@@ -59,6 +60,7 @@ function navLabel(section: NavSection): string {
     cache_location: t("section_cache_location"),
     search: t("section_search"),
     sort: "Sortierung",
+    filters: t("section_filters"),
     diagnose: t("section_diagnose")
   };
   return map[section];
@@ -76,6 +78,16 @@ function inputValue(id: string): string {
 
 function checked(id: string): boolean {
   return (document.getElementById(id) as HTMLInputElement).checked;
+}
+
+function sliderRangeOptions(settings: ExtensionSettings, key: SliderKey): string {
+  const range = resolveFilterSliderRanges(settings.filterSliderRanges)[key];
+  return `<div class="filter-slider-bounds" role="group" aria-label="${esc(t(key === "hike" ? "filter_hike" : "filter_climb"))}">${(["min", "max"] as const).map((bound) => `
+    <div class="field"><label for="filter-range-${key}-${bound}">${esc(t(bound === "min" ? "filter_slider_min" : "filter_slider_max"))}</label>
+      <select id="filter-range-${key}-${bound}" data-slider-key="${key}" data-slider-bound="${bound}">
+        ${SLIDER_SCALES[key].map((step) => `<option value="${step.value}" ${step.value === range[bound] ? "selected" : ""}>${step.label}</option>`).join("")}
+      </select>
+    </div>`).join("")}</div>`;
 }
 
 function esc(value: string): string {
@@ -394,6 +406,19 @@ function renderAllPanels(settings: ExtensionSettings, activeSection: NavSection)
       </div>
     `,
 
+    filters: `
+      <p class="muted">${esc(t("section_filters_hint"))}</p>
+      ${FILTER_OPTIONS.map(({ key, labelKey }) => `
+        <div class="toggle">
+          <input id="filter-visible-${key}" type="checkbox" ${resolveFilterVisibility(settings.filters)[key] ? "checked" : ""} />
+          <div><label for="filter-visible-${key}">${esc(t(labelKey))}</label></div>
+        </div>
+        ${key === "hike" || key === "climb" ? sliderRangeOptions(settings, key) : ""}
+      `).join("")}
+      <p class="muted">${esc(t("filter_slider_hint"))}</p>
+      <p class="muted">${esc(t("section_filters_note"))}</p>
+    `,
+
     sort: `
       <p class="muted">Standardsortierung für die Trefferliste in Suchergebnissen. Dieselben Optionen wie im Overlay – ein Klick sortiert aufsteigend, ein erneuter Klick auf dasselbe Kriterium dreht auf absteigend (▲/▼).</p>
       <div class="toggle">
@@ -461,6 +486,8 @@ function readSettings(current: ExtensionSettings): ExtensionSettings {
     features[key] = checked(`feature-${key}`);
   }
   const autoload = { ...current.tourDetailsAutoload };
+  const filters = resolveFilterVisibility(current.filters);
+  for (const { key } of FILTER_OPTIONS) filters[key] = checked(`filter-visible-${key}`);
   for (const key of AUTOLOAD_KEYS) autoload[key] = checked(`autoload-${key}`);
   const fallback = inputValue("fallbackStart").split(",").map(Number);
   const fuelPricePerLitre = parseFuelInput(inputValue("fuelPricePerLitre"));
@@ -469,6 +496,11 @@ function readSettings(current: ExtensionSettings): ExtensionSettings {
     ...current,
     language: inputValue("language") as Locale,
     features,
+    filters,
+    filterSliderRanges: resolveFilterSliderRanges({
+      hike: { min: Number(inputValue("filter-range-hike-min")), max: Number(inputValue("filter-range-hike-max")) },
+      climb: { min: Number(inputValue("filter-range-climb-min")), max: Number(inputValue("filter-range-climb-max")) }
+    }),
     tourDetailsAutoload: autoload,
     provider: {
       ...current.provider,
@@ -646,6 +678,15 @@ async function boot() {
     const target = event.target as HTMLElement;
     if (!target) return;
     if (target.closest(".saved-location-edit, .saved-location-add")) return;
+    if (target.dataset.sliderKey) {
+      const key = target.dataset.sliderKey;
+      const min = document.getElementById(`filter-range-${key}-min`) as HTMLSelectElement;
+      const max = document.getElementById(`filter-range-${key}-max`) as HTMLSelectElement;
+      if (Number(min.value) > Number(max.value)) {
+        if (target.dataset.sliderBound === "min") max.value = min.value;
+        else min.value = max.value;
+      }
+    }
     if (target.id === "language") {
       setLocale((target as HTMLSelectElement).value as Locale);
       void autosave(true);

@@ -642,7 +642,7 @@ body.hikr-ext-wide-layout .content-list-intern_div > div {
   font-size: 10.5px;
   line-height: 1.25;
 }
-.hikr-ext-filter-note[hidden] {
+.hikr-ext-filter-reset[hidden], .hikr-ext-filter-note[hidden] {
   display: none !important;
 }
 .hikr-ext-filter-check {

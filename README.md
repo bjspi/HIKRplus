@@ -107,7 +107,13 @@ Routes are cached for 7 days. Unroutable locations are negative-cached to avoid 
 ---
 
 ### 🎚️ Listing Filters
-Filter the visible HIKR tour listings directly from the side panel by hiking difficulty, climbing difficulty, geodata availability, and calculated driving time. The filter runs as a post-processing step on the listing HTML: original HIKR badges are used for difficulty, the tour footer is used for `Geodaten:N`, and driving-time filters become active once HikrPlus has calculated route durations.
+Filter the visible HIKR tour listings directly from the side panel by hiking, mountaineering, climbing, skiing, mountainbike, via ferrata, ice climbing and snowshoe difficulty, geodata availability, and calculated driving time. Mountaineering, skiing, mountainbike, via ferrata, ice climbing and snowshoe tours can also be excluded completely, including mixed tours carrying one of those difficulties. Missing difficulty values stay visible unless explicitly hidden.
+
+Choose which controls appear under **Options → Filter**, immediately below **Sortierung**. Via ferrata and snowshoe filters are disabled by default and can be enabled individually. This only controls filter availability, not which tour types are shown. Preferences save automatically and update open Hikr tabs; disabling a filter also clears its active constraints so hidden controls never keep excluding tours.
+
+Hiking and climbing also have **Slider from/to** settings. For example, choosing climbing I–III spreads those three grades across the full slider width. This changes the control's scale, not the results: move a handle or click **Bereich anwenden** to filter. Saved active bounds outside that scale are preserved by temporarily expanding the slider; resetting returns to the configured compact scale without restricting tours. Bounds use actual grade values, so changing the scale never reinterprets a saved grade.
+
+Difficulty detection uses the labels in tour tables and listing badge titles in German, English, Italian and French. Each grade maps to the numeric option value from Hikr's search form within its own sport. Translated grades such as `WS` / `PD`, `SS` / `TD` / `MD`, and via ferrata `K2` / `PD` share the same rank within that discipline. UIAA and French climbing grades follow Hikr's combined numeric order. Grades from fetched tour details update active filters and sorting automatically and are included in the tour details and Excel export. The tour footer is used for `Geodaten:N`, and driving-time filters become active once HikrPlus has calculated route durations.
 
 Entries with missing values stay visible by default, with optional checkboxes to hide listings without hiking grade, climbing grade, or driving time. Filters can be temporary for the current page load or saved so the panel opens and reapplies them automatically.
 

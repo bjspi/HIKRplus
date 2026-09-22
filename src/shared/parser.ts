@@ -1,13 +1,12 @@
 import type { Coordinates, GeodataLink, TourCacheRecord, TourWaypointEntry, WaypointCacheRecord } from "./types";
 import { TOUR_CACHE_VERSION } from "./types";
+import { parseTourDifficulties } from "./difficulty";
 import { parseGalleryPhotoIds } from "./photo-annotations";
 import { parseCoordinates, roundTo } from "./coordinates";
 import { absoluteUrl, getTourId, getWaypointId, isWaypointUrl, normalizeHikrUrl } from "./url";
 
 const FIELD_ALIASES = {
   dateOfHike: ["tour datum", "date of the hike", "date", "datum"],
-  hikingGrade: ["wandern schwierigkeit", "hiking grading", "hiking grade"],
-  climbingGrade: ["klettern schwierigkeit", "climbing grading", "climbing grade"],
   tourDuration: ["zeitbedarf", "time", "duration"],
   heightGain: ["aufstieg", "height gain", "ascent"],
   heightLoss: ["abstieg", "height loss", "descent"],
@@ -175,8 +174,7 @@ export function parseTourDocument(documentRef: Document, url: string): TourCache
     url: normalizeHikrUrl(url),
     title,
     dateOfHike: field(documentRef, "dateOfHike"),
-    hikingGrade: field(documentRef, "hikingGrade"),
-    climbingGrade: field(documentRef, "climbingGrade"),
+    ...parseTourDifficulties(documentRef),
     tourDuration: field(documentRef, "tourDuration"),
     heightGain: field(documentRef, "heightGain"),
     heightLoss: field(documentRef, "heightLoss"),

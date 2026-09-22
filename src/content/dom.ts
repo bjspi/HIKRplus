@@ -1,5 +1,6 @@
 import { externalMapUrl } from "../shared/external-map";
 import { t } from "../shared/i18n";
+import { DIFFICULTY_FIELDS, DIFFICULTY_LABELS } from "../shared/difficulty";
 import type { Coordinates, ExtensionSettings, TourCacheRecord, WaypointCacheRecord } from "../shared/types";
 
 export function ensureRoot(): HTMLElement {
@@ -101,6 +102,10 @@ const ICO_PEAK = "▲";
 
 export function detailHtml(tour: TourCacheRecord, waypoint?: WaypointCacheRecord, settings?: ExtensionSettings, compact = false): string {
   const parts: string[] = [];
+  for (const field of DIFFICULTY_FIELDS) {
+    const grade = tour[field];
+    if (grade) parts.push(`<span title="${DIFFICULTY_LABELS[field]}">${DIFFICULTY_LABELS[field]}: ${escapeHtml(grade)}</span>`);
+  }
   if (tour.tourDuration) parts.push(`<span title="Zeitbedarf">${ICO_CLOCK} ${escapeHtml(tour.tourDuration)}</span>`);
   if (tour.heightGain) parts.push(`<span title="Aufstieg">${ICO_UP} ${escapeHtml(tour.heightGain)}</span>`);
   if (tour.heightLoss) parts.push(`<span title="Abstieg">${ICO_DOWN} ${escapeHtml(tour.heightLoss)}</span>`);

@@ -1,10 +1,9 @@
 import type { RouteResult, TourCacheRecord } from "../shared/types";
+import { DIFFICULTY_DATA_KEYS, DIFFICULTY_FIELDS, difficultyRank, parseListingDifficulties, type DifficultyField } from "../shared/difficulty";
 import {
   type SortDir,
   compareValues,
-  parseClimbGrade,
   parseDurationMinutes,
-  parseHikeGrade,
   parseIsoDate,
   parseKm,
   parseMeters
@@ -18,22 +17,26 @@ function setNum(card: HTMLElement, key: string, value: number): void {
   else delete card.dataset[key];
 }
 
-// Grades live in the original list markup (not always present), so they can be read
-// without fetching/enriching the individual tour pages. The grade badges are the
-// small "width:30px" coloured spans; we classify them by text shape (T-scale vs.
-// roman climbing grade) rather than colour, so it is language-independent and
-// ignores the mountainbike badge (single letters L/M/S).
-export function writeCardGrades(card: HTMLElement): void {
-  let hike = Number.NaN;
-  let climb = Number.NaN;
-  for (const span of card.querySelectorAll<HTMLElement>("span[style]")) {
-    if (!(span.getAttribute("style") ?? "").replace(/\s/g, "").includes("width:30px")) continue;
-    const text = (span.textContent ?? "").trim();
-    if (Number.isNaN(hike) && /^T\s*\d/i.test(text)) hike = parseHikeGrade(text);
-    else if (Number.isNaN(climb) && /^[IVX]+\s*[+-]?$/i.test(text)) climb = parseClimbGrade(text);
+export const EVT_TOUR_GRADES_CHANGED = "hikr:ext:tour-grades-changed";
+type GradeRanks = Record<DifficultyField, number>;
+const badgeRanks = new WeakMap<HTMLElement, GradeRanks>();
+const tourRanks = new WeakMap<HTMLElement, GradeRanks>();
+
+export function readCardGradeRanks(card: HTMLElement): GradeRanks {
+  const details = tourRanks.get(card);
+  if (details) return details;
+  let ranks = badgeRanks.get(card);
+  if (!ranks) {
+    const grades = parseListingDifficulties(card);
+    ranks = Object.fromEntries(DIFFICULTY_FIELDS.map((field) => [field, difficultyRank(field, grades[field])])) as GradeRanks;
+    badgeRanks.set(card, ranks);
   }
-  setNum(card, "hikrGradeHike", hike);
-  setNum(card, "hikrGradeClimb", climb);
+  return ranks;
+}
+
+export function writeCardGrades(card: HTMLElement): void {
+  const ranks = readCardGradeRanks(card);
+  for (const field of DIFFICULTY_FIELDS) setNum(card, DIFFICULTY_DATA_KEYS[field], ranks[field]);
 }
 
 export function ensureAllCardGrades(): void {
@@ -42,12 +45,15 @@ export function ensureAllCardGrades(): void {
 
 // Detail-based values come from the enriched tour record.
 export function writeTourSortData(card: HTMLElement, tour: TourCacheRecord): void {
+  tourRanks.set(card, Object.fromEntries(DIFFICULTY_FIELDS.map((field) => [field, difficultyRank(field, tour[field])])) as GradeRanks);
+  writeCardGrades(card);
   setNum(card, "hikrAscent", parseMeters(tour.heightGain));
   setNum(card, "hikrDescent", parseMeters(tour.heightLoss));
   setNum(card, "hikrDistance", parseKm(tour.routeLength));
   setNum(card, "hikrDuration", parseDurationMinutes(tour.tourDuration));
   setNum(card, "hikrMaxElevation", tour.maxElevation ?? Number.NaN);
   setNum(card, "hikrDate", parseIsoDate(tour.dateOfHike));
+  document.dispatchEvent(new Event(EVT_TOUR_GRADES_CHANGED));
 }
 
 export function writeDriveSortData(card: HTMLElement | null | undefined, route: RouteResult): void {

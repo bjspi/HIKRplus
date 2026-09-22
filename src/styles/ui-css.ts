@@ -197,6 +197,8 @@ button, input, select { font: inherit; }
   font-weight: 650;
 }
 .field { display: grid; gap: 6px; margin: 14px 0; }
+.filter-slider-bounds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0 0 12px 52px; }
+.filter-slider-bounds .field { margin: 0; }
 .field.hikr-ext-option-subfield {
   margin: 0 0 10px 46px;
   padding: 0 0 12px;

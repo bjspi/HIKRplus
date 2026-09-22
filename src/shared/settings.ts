@@ -1,6 +1,7 @@
 import type { ExtensionSettings } from "./types";
 import { DEFAULT_SORT } from "./sort";
 import { detectLocaleFromBrowser } from "./i18n";
+import { DEFAULT_FILTER_VISIBILITY, resolveFilterVisibility, resolveFilterSliderRanges } from "./filter-settings";
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   language: detectLocaleFromBrowser(),
@@ -66,10 +67,12 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
     key: DEFAULT_SORT.key,
     dir: DEFAULT_SORT.dir
   },
+  filters: { ...DEFAULT_FILTER_VISIBILITY },
+  filterSliderRanges: resolveFilterSliderRanges(),
   migration: {}
 };
 
-const SETTINGS_KEY = "hikr.settings";
+export const SETTINGS_KEY = "hikr.settings";
 
 function mergeSettings(value?: Partial<ExtensionSettings>): ExtensionSettings {
   const merged = {
@@ -88,6 +91,8 @@ function mergeSettings(value?: Partial<ExtensionSettings>): ExtensionSettings {
     ui: { ...DEFAULT_SETTINGS.ui, ...value?.ui },
     dev: { ...DEFAULT_SETTINGS.dev, ...value?.dev },
     sort: { ...DEFAULT_SETTINGS.sort, ...value?.sort },
+    filters: resolveFilterVisibility(value?.filters),
+    filterSliderRanges: resolveFilterSliderRanges(value?.filterSliderRanges),
   tourDetailsAutoload: { ...DEFAULT_SETTINGS.tourDetailsAutoload, ...value?.tourDetailsAutoload },
   savedLocations: value?.savedLocations ? [...value.savedLocations] : [...DEFAULT_SETTINGS.savedLocations],
   searchPresets: value?.searchPresets ? [...value.searchPresets] : [...DEFAULT_SETTINGS.searchPresets],
@@ -132,6 +137,11 @@ export async function patchSettings(patch: Partial<ExtensionSettings>): Promise<
     ui: { ...current.ui, ...patch.ui },
     dev: { ...current.dev, ...patch.dev },
     sort: { ...current.sort, ...patch.sort },
+    filters: { ...current.filters, ...patch.filters },
+    filterSliderRanges: {
+      hike: { ...current.filterSliderRanges.hike, ...patch.filterSliderRanges?.hike },
+      climb: { ...current.filterSliderRanges.climb, ...patch.filterSliderRanges?.climb }
+    },
     tourDetailsAutoload: { ...current.tourDetailsAutoload, ...patch.tourDetailsAutoload },
     savedLocations: patch.savedLocations ?? current.savedLocations,
     searchPresets: patch.searchPresets ?? current.searchPresets,

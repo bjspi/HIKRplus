@@ -13,6 +13,13 @@ describe("excel export", () => {
           title: "Tour",
           dateOfHike: "2024-07-18",
           hikingGrade: "T4",
+          mountaineeringGrade: "WS+",
+          climbingGrade: "II",
+          skiGrade: "ZS",
+          mountainbikeGrade: "WS",
+          viaFerrataGrade: "K2+",
+          iceClimbingGrade: "WI3",
+          snowshoeGrade: "WT2",
           tourDuration: "5:00",
           waypointUrls: ["https://www.hikr.org/dir/Start_1"],
           waypoints: [],
@@ -57,5 +64,8 @@ describe("excel export", () => {
     expect(dataRow.join(",")).toContain("47.1");
     expect(dataRow.join(",")).toContain("10.2");
     expect(dataRow).toContain("Start");
+    for (const [label, value] of [["Hochtouren", "WS+"], ["Klettern", "II"], ["Ski", "ZS"], ["Mountainbike", "WS"], ["Klettersteig", "K2+"], ["Eisklettern", "WI3"], ["Schneeschuh", "WT2"]]) {
+      expect(dataRow[headers.indexOf(label)]).toBe(value);
+    }
   });
 });

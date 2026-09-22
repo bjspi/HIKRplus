@@ -11,7 +11,8 @@ function findRoute(tour: TourCacheRecord, routes: RouteCacheRecord[] = []): Rout
 
 export function toursToExcel(request: ExcelExportRequest): Uint8Array {
   const headers = [
-    "Titel", "Tour-Link", "Tour Datum", "Wandern", "Klettern",
+    "Titel", "Tour-Link", "Tour Datum", "Wandern", "Hochtouren", "Klettern", "Ski", "Mountainbike",
+    "Klettersteig", "Eisklettern", "Schneeschuh",
     "Dauer", "Höhenmeter", "Höchster Punkt (m)", "Strecke", "Start-Wegpunkt",
     "Latitude", "Longitude", "Fahrtstrecke", "Fahrtdauer"
   ];
@@ -21,7 +22,8 @@ export function toursToExcel(request: ExcelExportRequest): Uint8Array {
     const rt = findRoute(tour, request.routes);
     return [
       tour.title ?? "", tour.url ?? "", tour.dateOfHike ?? "",
-      tour.hikingGrade ?? "", tour.climbingGrade ?? "",
+      tour.hikingGrade ?? "", tour.mountaineeringGrade ?? "", tour.climbingGrade ?? "", tour.skiGrade ?? "", tour.mountainbikeGrade ?? "",
+      tour.viaFerrataGrade ?? "", tour.iceClimbingGrade ?? "", tour.snowshoeGrade ?? "",
       tour.tourDuration ?? "", tour.heightGain ?? "", tour.maxElevation ?? "", tour.routeLength ?? "",
       wp?.name ?? tour.startWaypointName ?? "",
       wp?.coordinates?.lat ?? "", wp?.coordinates?.lng ?? "",
@@ -37,7 +39,13 @@ export function toursToExcel(request: ExcelExportRequest): Uint8Array {
     { wch: 38 }, // Tour-Link
     { wch: 12 }, // Datum
     { wch: 10 }, // Wandern
+    { wch: 12 }, // Hochtouren
     { wch: 10 }, // Klettern
+    { wch: 10 }, // Ski
+    { wch: 14 }, // Mountainbike
+    { wch: 14 }, // Klettersteig
+    { wch: 14 }, // Eisklettern
+    { wch: 14 }, // Schneeschuh
     { wch: 10 }, // Dauer
     { wch: 12 }, // Höhenmeter
     { wch: 18 }, // Höchster Punkt

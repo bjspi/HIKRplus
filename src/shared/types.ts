@@ -97,6 +97,8 @@ export interface ExtensionSettings {
     key: string;
     dir: import("./sort").SortDir;
   };
+  filters: import("./filter-settings").FilterVisibility;
+  filterSliderRanges: import("./filter-settings").FilterSliderRanges;
   tourDetailsAutoload: TourDetailsAutoload;
   savedLocations: SavedLocation[];
   searchPresets: SearchPreset[];
@@ -127,7 +129,13 @@ export interface TourCacheRecord {
   title?: string;
   dateOfHike?: string;
   hikingGrade?: string;
+  mountaineeringGrade?: string;
   climbingGrade?: string;
+  skiGrade?: string;
+  mountainbikeGrade?: string;
+  viaFerrataGrade?: string;
+  iceClimbingGrade?: string;
+  snowshoeGrade?: string;
   tourDuration?: string;
   heightGain?: string;
   heightLoss?: string;
@@ -157,7 +165,7 @@ export interface TourWaypointEntry {
   visits?: number;
 }
 
-export const TOUR_CACHE_VERSION = 4;
+export const TOUR_CACHE_VERSION = 6;
 
 export interface AnnotatedPeak {
   name: string;

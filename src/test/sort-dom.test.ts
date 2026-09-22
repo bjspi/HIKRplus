@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { sortCards, writeCardGrades } from "../content/sort-data";
+import { sortCards, writeCardGrades, writeTourSortData } from "../content/sort-data";
+import { parseTourDocument } from "../shared/parser";
 
 function card(text: string, attrs: Record<string, string>): HTMLElement {
   const el = document.createElement("div");
@@ -112,6 +113,55 @@ describe("sortCards", () => {
 });
 
 describe("writeCardGrades", () => {
+  it.each([
+    ["hikrGradeViaFerrata", "Difficoltà via ferrata", "AD", "MD+"],
+    ["hikrGradeIceClimbing", "Ice climbing grading", "WI3", "WI5"],
+    ["hikrGradeSnowshoe", "Difficulté raquettes", "WT3", "WT5"]
+  ])("sorts %s by numeric difficulty with unknowns last", (key, label, easy, hard) => {
+    for (const [name, grade] of [["Hard", hard], ["Unknown", ""], ["Easy", easy]]) {
+      const c = card(name, {});
+      const b = badge("#000", grade);
+      b.title = label;
+      c.append(b);
+      document.body.append(c, footer(name));
+    }
+    sortCards(key, "asc");
+    expect(cardTexts()).toEqual(["Easy", "Hard", "Unknown"]);
+    sortCards(key, "desc");
+    expect(cardTexts()).toEqual(["Hard", "Easy", "Unknown"]);
+  });
+
+  it("sorts localized ski badges consistently and keeps missing grades last", () => {
+    const main = document.createElement("div");
+    for (const [name, grade, label] of [["A", "AD", "Ski grading"], ["B", "WS+", "Ski Schwierigkeit"], ["C", "D", "Difficulté ski"], ["X", "", ""]]) {
+      const c = card(name, {});
+      const b = badge("#000", grade);
+      b.title = label;
+      c.append(b);
+      main.append(c, footer(name));
+    }
+    document.body.append(main);
+    sortCards("hikrGradeSki", "asc");
+    expect(cardTexts()).toEqual(["B", "A", "C", "X"]);
+    sortCards("hikrGradeSki", "desc");
+    expect(cardTexts()).toEqual(["C", "A", "B", "X"]);
+  });
+
+  it("keeps authoritative tour grades when sorting rescans incomplete badges", () => {
+    const c = card("Tour", {});
+    c.append(badge("#000", "T2"));
+    writeCardGrades(c);
+    const tour = parseTourDocument(new DOMParser().parseFromString(`<table>
+      <tr><td>Hiking grading:</td><td>T5</td></tr>
+      <tr><td>Mountaineering grading:</td><td>PD+</td></tr>
+      <tr><td>Ski grading:</td><td>AD</td></tr></table>`, "text/html"), "https://www.hikr.org/tour/post1.html");
+    writeTourSortData(c, tour);
+    writeCardGrades(c);
+    expect(c.dataset.hikrGradeHike).toBe("500");
+    expect(c.dataset.hikrGradeMountaineering).toBe("4");
+    expect(c.dataset.hikrGradeSki).toBe("6");
+  });
+
   it("extracts hiking and climbing grades from the list badges, ignoring MTB", () => {
     const c = card("tour", {});
     c.append(
@@ -121,8 +171,8 @@ describe("writeCardGrades", () => {
     );
     document.body.append(c);
     writeCardGrades(c);
-    expect(Number(c.dataset.hikrGradeHike)).toBeCloseTo(5.3);
-    expect(Number(c.dataset.hikrGradeClimb)).toBe(2);
+    expect(Number(c.dataset.hikrGradeHike)).toBe(530);
+    expect(Number(c.dataset.hikrGradeClimb)).toBe(200);
   });
 
   it("leaves attributes unset when a grade badge is absent", () => {
@@ -130,7 +180,7 @@ describe("writeCardGrades", () => {
     c.append(badge("#339933", " T3"));
     document.body.append(c);
     writeCardGrades(c);
-    expect(Number(c.dataset.hikrGradeHike)).toBe(3);
+    expect(Number(c.dataset.hikrGradeHike)).toBe(300);
     expect(c.dataset.hikrGradeClimb).toBeUndefined();
   });
 });
